@@ -49,24 +49,20 @@ paste.ui.heroscroll.updateParallax(); // Force parallax update
 ```scss
 $paste-hero-min-height: 50vh !default;
 $paste-hero-min-height-full: 100vh !default;
-$paste-hero-padding-y: 4rem !default;
-$paste-hero-background-color: $paste-color-dark !default;
-$paste-hero-text-color: #fff !default;
-$paste-hero-parallax-speed: 0.5 !default;
 ```
 
 ## CSS Classes
 
 | Class | Description |
 |-------|-------------|
-| `.paste-hero` | Base hero styles |
-| `.paste-hero-full` | Full viewport height |
-| `.paste-hero-parallax` | Parallax background positioning |
+| `.paste-ui-hero` | Base hero styles |
+| `.paste-ui-hero-full` | Full viewport height |
+| `.paste-ui-hero-parallax` | Parallax background positioning |
 
 ## Example
 
 ```html
-<section class="paste-hero paste-hero-full" 
+<section class="paste-ui-hero paste-ui-hero-full" 
          data-paste-hero="main" 
          data-paste-parallax="true"
          style="background-image: url('/images/hero.jpg')">
