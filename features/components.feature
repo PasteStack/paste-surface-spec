@@ -64,3 +64,45 @@ Feature: Surface Component Rendering
     When I render the CSS includes
     Then the output should contain a link rel="stylesheet" tag
     And the href should reference the included CSS paths
+
+  Scenario: SectionNav component renders with sticky nav data attribute
+    Given a SectionNav view model with:
+      | property | value |
+      | sticky   | true  |
+    And nav items:
+      | label      | targetId          |
+      | About      | introduction      |
+      | Why Us     | why-choose-us |
+      | Contact    | contact           |
+    When I render the SectionNav component
+    Then the HTML should contain element with class="paste-ui-section-nav"
+    And the HTML should contain data-paste-sticky-nav
+    And the HTML should contain element with class="paste-ui-section-nav-items"
+    And the HTML should contain 3 elements with class="paste-ui-section-nav-item"
+    And the HTML should contain a[href="#introduction"] with text "About"
+    And the HTML should contain a[href="#why-choose-us"] with text "Why Us"
+    And the HTML should contain a[href="#contact"] with text "Contact"
+
+  Scenario: SectionNav without sticky does not emit data attribute
+    Given a SectionNav view model with:
+      | property | value |
+      | sticky   | false |
+    And nav items:
+      | label | targetId |
+      | About | about    |
+    When I render the SectionNav component
+    Then the HTML should contain element with class="paste-ui-section-nav"
+    And the HTML should not contain data-paste-sticky-nav
+
+  Scenario: SectionNav with custom CSS classes
+    Given a SectionNav view model with:
+      | property | value        |
+      | sticky   | true         |
+      | cssClass | dark-theme   |
+    And nav items:
+      | label   | targetId | cssClass |
+      | About   | about    | active   |
+      | Contact | contact  |          |
+    When I render the SectionNav component
+    Then the HTML should contain element with class="paste-ui-section-nav dark-theme"
+    And the HTML should contain li with class="paste-ui-section-nav-item active"

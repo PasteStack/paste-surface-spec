@@ -87,9 +87,63 @@ case class Address(
 
 ---
 
+## SectionNav
+
+In-page navigation bar with anchor links to page sections. Integrates with `paste.ui.smoothscroll` (auto-intercepts anchor clicks, updates URL via pushState) and `paste.ui.stickynav` (makes nav fixed on scroll past trigger point).
+
+### ViewModel: NavItem
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `label` | string | yes | - | Display text |
+| `targetId` | string | yes | - | Target section element ID (without `#`) |
+| `cssClass` | string | no | `""` | Additional CSS class on the `<li>` |
+
+### ViewModel: SectionNav
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `items` | Seq[NavItem] | yes | - | Navigation link items |
+| `sticky` | boolean | no | `true` | Emit `data-paste-sticky-nav` attribute |
+| `cssClass` | string | no | `""` | Additional CSS class on the `<nav>` |
+
+### Example (Scala)
+
+```scala
+case class NavItem(
+  label: String,
+  targetId: String,
+  cssClass: String = ""
+)
+
+case class SectionNav(
+  items: Seq[NavItem],
+  sticky: Boolean = true,
+  cssClass: String = ""
+)
+```
+
+### HTML Output
+
+```html
+<nav class="paste-ui-section-nav {cssClass}"
+     data-paste-sticky-nav>
+  <ul class="paste-ui-section-nav-items">
+    <li class="paste-ui-section-nav-item {item.cssClass}">
+      <a href="#{item.targetId}">{item.label}</a>
+    </li>
+  </ul>
+</nav>
+```
+
+When `sticky=false`, the `data-paste-sticky-nav` attribute is omitted.
+
+---
+
 ## Template Paths
 
 | Component | Twirl | Jinja/Nunjucks |
 |-----------|-------|----------------|
 | Hero | `paste.surface.components.html.hero` | `paste/surface/components/hero.html` |
 | Address | `paste.surface.components.html.address` | `paste/surface/components/address.html` |
+| SectionNav | `paste.surface.components.html.sectionNav` | `paste/surface/components/section-nav.html` |
