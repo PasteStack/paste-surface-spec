@@ -106,4 +106,4 @@ src/scss/heroscroll.scss  →    (bundled CSS)
 
 ## License
 
-MIT
+Apache License, Version 2.0. See `LICENSE` and `NOTICE.md`.

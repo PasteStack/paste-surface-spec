@@ -18,7 +18,6 @@ paste.surface {
   
   assets {
     version = "2025.02.02"
-    checksum = "abc123"
     debug-mode = false
     debug-mode = ${?PASTE_DEBUG}  # Override via env var
   }

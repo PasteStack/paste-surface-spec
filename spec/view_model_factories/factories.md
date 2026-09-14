@@ -61,8 +61,8 @@ Creates asset includes, aggregating JAM modules.
 
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
-| `forPasteJam` | config, additionalModules? | JSInclude | Paste core + UI via JAM |
-| `forForms` | config | JSInclude | Paste core + form modules |
+| `forPasteJam` | config, additionalModules?, moduleVersions? | JSInclude | Paste core + UI via JAM |
+| `forForms` | config, moduleVersions? | JSInclude | Paste core + form modules |
 | `forDirectJS` | paths, debugMode? | JSInclude | Direct file paths |
 | `forDirectCSS` | paths, debugMode? | CSSInclude | Direct file paths |
 
@@ -72,19 +72,22 @@ Creates asset includes, aggregating JAM modules.
 object IncludesFactory {
   case class AssetConfig(
     version: String,
-    checksum: String,
     debugMode: Boolean = false
   )
-  
+
   val PASTE_CORE = Seq("paste", "paste.dom", "paste.event", "paste.util")
   val PASTE_UI = Seq("paste.ui.heroscroll", "paste.ui.stickynav", "paste.ui.smoothscroll")
-  
-  def forPasteJam(config: AssetConfig, additionalModules: Seq[String] = Seq.empty): JSInclude = {
+
+  def forPasteJam(
+    config: AssetConfig,
+    additionalModules: Seq[String] = Seq.empty,
+    moduleVersions: Map[String, String] = Map.empty
+  ): JSInclude = {
     JSInclude(
       debugMode = config.debugMode,
       jamModules = PASTE_CORE ++ PASTE_UI ++ additionalModules,
       jamVersion = config.version,
-      jamChecksum = config.checksum
+      jamModuleVersions = moduleVersions
     )
   }
 }
@@ -92,7 +95,12 @@ object IncludesFactory {
 
 ### Output
 
-The `paste-assetgraph` Manifest runtime generates the actual JAM URL. Format: `/paste/{timestamp}/{module+version~...}.min.js`
+The JAM path shape is owned by the JAM server and stated in
+[`view_models/includes.md`](../view_models/includes.md). An application that
+loads a `paste-assetgraph` manifest gets the composed path (and per-module
+versions) from the Manifest runtime; a factory built from static config emits the
+same shape keyed by the asset build version. Format:
+`/paste/{version}/{module+version~...}.min.js`
 
 - **Timestamp**: Unix epoch seconds (max of all modules' timestamps)
 - **Modules**: `module+vN.0` format, `~` (tilde) separated (Pekko HTTP rejects commas in path segments)
@@ -103,4 +111,8 @@ The `paste-assetgraph` Manifest runtime generates the actual JAM URL. Format: `/
 <script src="/paste/1770465408/paste+v1.0~paste.dom+v1.0~paste.event+v1.0~paste.ui.heroscroll+v1.0~paste.ui.smoothscroll+v1.0~paste.ui.stickynav+v1.0~paste.util+v1.0.min.js" defer></script>
 ```
 
-> **Note:** `paste-surface-scala` `JSInclude.jamUrl` still uses the legacy format (`/paste/{version}/{checksum}/{modules}.min.js` with comma separator and bare module names). It should be migrated to use `paste-assetgraph` `Manifest.jamJsUrl` instead.
+> **Compatibility:** an earlier `paste-surface-scala` `JSInclude.jamUrl` inserted a
+> second path segment (`/paste/{version}/{checksum}/{modules}.min.js`). The server
+> reads everything after the version segment as the module list, so that shape
+> silently dropped the first module from the response. Implementations MUST emit a
+> single version segment.
