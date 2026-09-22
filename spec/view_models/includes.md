@@ -62,6 +62,9 @@ Inherits from `AssetInclude`.
 |----------|------|----------|---------|-------------|
 | `async` | boolean | no | `false` | Load scripts asynchronously |
 | `defer` | boolean | no | `true` | Defer script execution |
+| `jamModules` | Seq[string] | no | empty | Module names for the JAM request; non-empty selects JAM mode |
+| `jamVersion` | string | no | `""` | The path's single cache segment: asset build version or manifest group timestamp |
+| `jamModuleVersions` | Map[string, string] | no | empty | Per-module versions from the asset manifest, appended as `+v{version}` |
 
 ### Example (Scala)
 
@@ -71,20 +74,41 @@ case class JSInclude(
   pasteIncludes: Seq[String] = Seq.empty,
   async: Boolean = false,
   defer: Boolean = true,
-  // JAM mode: cacheable path /paste/{version}/{checksum}/{modules}.js
+  // JAM mode: cacheable path /paste/{version}/{modules}.js
   jamModules: Seq[String] = Seq.empty,
   jamVersion: String = "",
-  jamChecksum: String = ""
+  jamModuleVersions: Map[String, String] = Map.empty
 ) extends AssetInclude {
   def useJam: Boolean = jamModules.nonEmpty
-  
+
   def jamUrl: String = {
-    val modules = jamModules.sorted.mkString(",")
+    val modules = jamModules.sorted
+      .map(module => jamModuleVersions.get(module).fold(module)(version => s"$module+v$version"))
+      .mkString("~")
     val suffix = if (debugMode) ".js" else ".min.js"
-    s"/paste/$jamVersion/$jamChecksum/$modules$suffix"
+    s"/paste/$jamVersion/$modules$suffix"
   }
 }
 ```
+
+### JAM Path Contract
+
+The JAM server owns this path shape: one immutable version segment, then the
+module list, then the extension. Implementations MUST NOT add further path
+segments — the server treats everything after the version segment as the module
+list, so an extra segment is parsed as part of the first module name and that
+module is silently dropped from the response.
+
+```
+/paste/{version}/{module}[+v{version}]{~{module}[+v{version}]}*[.min].{js|css}
+```
+
+- `{version}` is the group's cache key: the asset build version, or the manifest's
+  group timestamp when the caller composes the path from a manifest.
+- Modules are separated by `~`. A comma is accepted for backward compatibility.
+- A per-module `+v{version}` suffix is optional; the server strips it. Supply it
+  from the asset manifest so a single changed module invalidates the path.
+- Modules are sorted so the same set always produces the same cacheable path.
 
 ### HTML Output
 
@@ -99,11 +123,14 @@ case class JSInclude(
 
 **JAM mode** (dependency resolution via cacheable URL):
 ```html
-<!-- Cacheable path: /paste/{version}/{checksum}/{modules}.js -->
-<script src="/paste/2025.02.02/abc123/paste.dom,paste.ui.heroscroll.min.js" type="text/javascript" defer></script>
+<!-- Cacheable path: /paste/{version}/{modules}.js -->
+<script src="/paste/2025.02.02/paste.dom~paste.ui.heroscroll.min.js" type="text/javascript" defer></script>
 
 <!-- Debug mode -->
-<script src="/paste/2025.02.02/abc123/paste.dom,paste.ui.heroscroll.js" type="text/javascript" defer></script>
+<script src="/paste/2025.02.02/paste.dom~paste.ui.heroscroll.js" type="text/javascript" defer></script>
+
+<!-- Composed from a manifest: group timestamp plus per-module versions -->
+<script src="/paste/1770465409/paste.dom+v1.0~paste.ui.heroscroll+v3.0.min.js" type="text/javascript" defer></script>
 ```
 
 ### Usage Examples
@@ -112,22 +139,28 @@ case class JSInclude(
 // Direct mode - specify file paths
 JSInclude(pasteIncludes = Seq("/js/paste.js", "/js/app.js"))
 
-// JAM mode - cacheable URL with version/checksum
+// JAM mode - cacheable URL keyed by the asset build version
 JSInclude(
   jamModules = Seq("paste.dom", "paste.ui.heroscroll"),
-  jamVersion = "2025.02.02",
-  jamChecksum = "abc123"
+  jamVersion = "2025.02.02"
 )
-// Output: /paste/2025.02.02/abc123/paste.dom,paste.ui.heroscroll.min.js
+// Output: /paste/2025.02.02/paste.dom~paste.ui.heroscroll.min.js
 
 // JAM mode with debug
 JSInclude(
   jamModules = Seq("paste.dom", "paste.ui.heroscroll"),
   jamVersion = "2025.02.02",
-  jamChecksum = "abc123",
   debugMode = true
 )
-// Output: /paste/2025.02.02/abc123/paste.dom,paste.ui.heroscroll.js
+// Output: /paste/2025.02.02/paste.dom~paste.ui.heroscroll.js
+
+// JAM mode with manifest data - per-module versions invalidate one module
+JSInclude(
+  jamModules = Seq("paste.dom", "paste.ui.heroscroll"),
+  jamVersion = "1770465409",
+  jamModuleVersions = Map("paste.dom" -> "1.0", "paste.ui.heroscroll" -> "3.0")
+)
+// Output: /paste/1770465409/paste.dom+v1.0~paste.ui.heroscroll+v3.0.min.js
 ```
 
 ### Why Cacheable URLs?
