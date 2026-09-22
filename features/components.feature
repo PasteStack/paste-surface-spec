@@ -40,8 +40,34 @@ Feature: Surface Component Rendering
     And the root should have data-sequence-source="/sequences/hero"
     And the root should have data-sequence-range="enter-exit"
     And the root should have data-sequence-preload="auto"
+    And the root should have data-sequence-fit="cover"
+    And the root should have data-sequence-scroll-window-start="0.0"
+    And the root should have data-sequence-scroll-window-end="1.0"
     And the picture should carry an img with width="1920" height="1080" and an empty alt
     And the renderer should not emit frame URLs, inline scripts, or runtime state
+
+  Scenario: ImageSequence renders a supplied fit and scroll window
+    Given an ImageSequence view model with:
+      | property          | value                     |
+      | source            | /sequences/hero           |
+      | posterFirst       | /sequences/hero/first.jpg |
+      | posterFinal       | /sequences/hero/final.jpg |
+      | posterWidth       | 1920                      |
+      | posterHeight      | 1080                      |
+      | fit               | contain                   |
+      | scrollWindowStart | 0.3                       |
+      | scrollWindowEnd   | 0.65                      |
+    When I render the ImageSequence component
+    Then the root should have data-sequence-fit="contain"
+    And the root should have data-sequence-scroll-window-start="0.3"
+    And the root should have data-sequence-scroll-window-end="0.65"
+
+  Scenario: ImageSequence attributes are optional for hand-authored markup
+    Given a plain HTML element carrying data-paste-candidate-imagesequence, a poster, and a source
+    And no data-sequence-fit, data-sequence-scroll-window-start, or data-sequence-scroll-window-end attributes
+    When the Element initializes it
+    Then it plays with fit "cover" across the scroll window 0 to 1
+    And the rendered defaults match what the view model emits unset
 
   Scenario: ImageSequence poster candidates are emitted in ascending width
     Given an ImageSequence view model with poster candidates supplied out of order
@@ -76,6 +102,10 @@ Feature: Surface Component Rendering
       | progressTargetId | an id containing "#"     |
       | progressTargetId | an id containing a space |
       | scrollFrom       | supplied without scrollTo |
+      | fit              | an unknown fit           |
+      | scrollWindowStart | a fraction below 0      |
+      | scrollWindowEnd  | a fraction above 1       |
+      | scrollWindowEnd  | not exceeding scrollWindowStart |
       | posterSources    | repeated widths          |
       | posterSources    | mismatched aspect ratios |
 

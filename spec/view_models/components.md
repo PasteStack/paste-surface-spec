@@ -76,10 +76,15 @@ component: no blank box, no layout shift.
 | `posterSizes` | string | no | `"100vw"` | `sizes` attribute for the responsive poster |
 | `scrollFrom` | int | no | `None` | Frame index the scroll range starts at |
 | `scrollTo` | int | no | `None` | Frame index the scroll range ends at; supplied together with `scrollFrom` |
+| `fit` | string | no | `"cover"` | `cover` or `contain`: how each drawn frame fits its box |
+| `scrollWindowStart` | double | no | `0.0` | Fraction of the target's travel where playback starts, within 0 and 1 |
+| `scrollWindowEnd` | double | no | `1.0` | Fraction of the target's travel where playback completes, within 0 and 1 and exceeding `scrollWindowStart` |
 
 Construction rejects a blank `source`, `posterFirst` or `posterFinal`, a
 non-positive poster dimension, an unknown `range` or `preload`, a negative
-`priority` or scroll endpoint, one scroll endpoint without the other, a
+`priority` or scroll endpoint, one scroll endpoint without the other, a `fit`
+that is neither `cover` nor `contain`, a scroll window bound outside 0 to 1,
+a window whose end does not exceed its start, a
 `progressTargetId` that is blank or carries `#` or whitespace, repeated poster
 widths, and poster aspect ratios that disagree by more than one percent. These are configuration errors (`IllegalArgumentException`), including
 through `copy`.
@@ -117,6 +122,9 @@ through `copy`.
      data-sequence-range="{range}"
      data-sequence-preload="{preload}"
      data-sequence-priority="{priority}"
+     data-sequence-fit="{fit}"
+     data-sequence-scroll-window-start="{scrollWindowStart}"
+     data-sequence-scroll-window-end="{scrollWindowEnd}"
      data-sequence-scroll-from="{scrollFrom}"
      data-sequence-scroll-to="{scrollTo}"
      data-sequence-intro-mode="{intro.mode}"
@@ -135,8 +143,10 @@ through `copy`.
 </div>
 ```
 
-- Scroll and intro attributes appear only when their values are supplied; the
-  intro block appears only with an `intro`.
+- The scroll endpoint and intro attributes appear only when their values are
+  supplied; the intro block appears only with an `intro`. `-fit` and the
+  `-scroll-window-*` attributes always render and carry the effective value,
+  which is the Element's default when the caller does not set it.
 - Poster candidates are emitted in ascending width regardless of the order they
   were supplied. Non-WebP `<source>` elements appear only when a candidate
   supplies them.
@@ -149,10 +159,18 @@ through `copy`.
 
 The Element reads `[data-paste-candidate-imagesequence]` and honours
 `data-sequence-source`, `-progress-id`, `-range`, `-preload`, `-priority`,
-`-scroll-from`, `-scroll-to`, and the four intro attributes other than
-`-intro-trigger`. It adds `-priority` to every request it submits, so a page's
-sequences load in the order the caller declared; an absent or unusable value means
-no offset rather than an error. It owns
+`-fit`, `-scroll-window-start`, `-scroll-window-end`, `-scroll-from`,
+`-scroll-to`, and the four intro attributes other than `-intro-trigger`.
+`-fit` accepts `cover` or `contain` and defaults to `cover`;
+`-scroll-window-start` and `-scroll-window-end` are fractions from 0 to 1,
+defaulting to 0 and 1, and the end must exceed the start. Every attribute is
+optional: an absent attribute takes the Element's default, so a hand-authored
+`[data-paste-candidate-imagesequence]` element works with any subset of them
+present. The view model's defaults are the Element's defaults — `cover`,
+`0.0`, `1.0` — so markup a Surface renderer emits and markup written by hand
+mean the same thing. It adds `-priority` to every request it submits, so a
+page's sequences load in the order the caller declared; an absent or unusable
+value means no offset rather than an error. It owns
 media resources and canvas pixels, never page layout or document scrolling, and
 under reduced motion it leaves the final-frame poster in place.
 
