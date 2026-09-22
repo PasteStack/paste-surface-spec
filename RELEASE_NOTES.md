@@ -1,3 +1,26 @@
+# paste-surface-spec v0.2.1
+
+**Date:** 2026-09-22
+
+## Added
+
+- ImageSequence `fit` and scroll window: `fit`, `scrollWindowStart` and
+  `scrollWindowEnd` on the view model, the three data attributes a renderer
+  emits for them, and their accepted values, defaults and bounds in the Element
+  contract. The Element already honoured all three, so this also closes the gap
+  between what the contract listed and what the Element reads.
+
+## Changed
+
+- The Element contract states that every ImageSequence attribute is optional
+  and that an absent attribute takes the Element's default, so a hand-authored
+  element works with any subset of them present. It also records that the view
+  model's defaults are the Element's defaults, making the two authoring routes
+  provably equivalent from the specification alone.
+- The note on conditional attributes now separates the scroll endpoints and
+  intro attributes, which appear only when supplied, from `-fit` and the
+  `-scroll-window-*` attributes, which always render the effective value.
+
 # paste-surface-spec v0.2.0
 
 **Date:** 2026-09-22
