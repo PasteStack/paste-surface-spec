@@ -1,3 +1,23 @@
+# paste-surface-spec v0.3.0
+
+**Date:** 2026-09-23
+
+## Added
+
+- Form component: view model, HTML output, and the `paste.ui.form` Element
+  contract — how the submission is resolved, which submissions are left to the
+  browser, and what happens to each kind of response.
+- Rendering contract (`spec/rendering/rendering.md`): one view model rendered
+  as a page, an IO reply fragment, or JSON from the request headers; IO reply
+  fragment targets; the IO reply fragment envelope and the
+  `paste.ui.io-reply-fragment-envelope` Element.
+- Presenters link to the rendering contract for IO reply fragments.
+
+## Changed
+
+- `dataAttributes` names on Input, Button and Textarea must match
+  `[a-z0-9][a-z0-9._-]*`.
+
 # paste-surface-spec v0.2.1
 
 **Date:** 2026-09-22
