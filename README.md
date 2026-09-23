@@ -60,10 +60,14 @@ Route -> Presenter -> ViewModelFactory -> ViewModel -> Template
 
 - [Web Base Layout](spec/layouts/webbase.md) — Base HTML structure
 
+### Rendering
+
+- [Rendering a View Model](spec/rendering/rendering.md) — Page/IO reply fragment/JSON from one view model
+
 ### Components
 
 - [Hero, Address](spec/view_models/components.md)
-- [Form Fields](spec/components/formfield/form.md) — Input, Button, Textarea, Hidden
+- [Forms](spec/components/formfield/form.md) — Form, Input, Button, Textarea, Hidden
 
 ### Config
 
@@ -83,9 +87,11 @@ spec/
 │   └── presenters.md     # PagePresenter (optional)
 ├── layouts/
 │   └── webbase.md        # Base HTML layout
+├── rendering/
+│   └── rendering.md      # Page/IO reply fragment/JSON rendering contract
 ├── components/
 │   └── formfield/
-│       └── form.md       # Input, Button, Textarea, Hidden
+│       └── form.md       # Form, Input, Button, Textarea, Hidden
 └── config/
     └── config.md         # SurfaceConfig
 ```
@@ -93,12 +99,14 @@ spec/
 ## Relationship: Elements → Components
 
 ```
-paste-elements (JS + SCSS)     paste-surface-* (Templates)
-─────────────────────────      ────────────────────────────
-src/js/heroscroll.js      →    components/hero.html
-src/js/stickynav.js       →    components/hero.html (data attrs)
-src/js/autogrow.js        →    components/formfield/textarea.html
-src/scss/heroscroll.scss  →    (bundled CSS)
+paste-elements (JS + SCSS)          paste-surface-* (Templates)
+─────────────────────────           ────────────────────────────
+modules/heroscroll/heroscroll.js →  components/hero.html
+modules/stickynav/stickynav.js   →  components/hero.html (data attrs)
+modules/autogrow/autogrow.js     →  components/formfield/textarea.html
+modules/form/form.js             →  form[data-paste-form] markup
+modules/io-reply-fragment-envelope/io-reply-fragment-envelope.js →  data-paste-io-reply-fragment-target targets
+modules/*/*.scss                 →  (bundled CSS)
 ```
 
 **Elements** = JS behaviors + SCSS styles  

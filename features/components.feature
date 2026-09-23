@@ -385,3 +385,235 @@ Feature: Surface Component Rendering
     And attributes and style properties owned by the Element should be restored
     And original nodes and their order should remain intact
     And unrelated attributes and style properties should remain unchanged
+
+  Scenario Outline: paste.ui.form submits what the browser would have submitted
+    Given a form[data-paste-form] inside an IO reply fragment target
+    And the submitting button carries <attribute> "<value>"
+    When the form is submitted with that button
+    Then the request should use <effect>
+
+    Examples:
+      | attribute   | value                 | effect                              |
+      | formaction  | /other                | the action /other                   |
+      | formmethod  | get                   | the get method with a query string  |
+      | formenctype | multipart/form-data   | a multipart body                    |
+      | formtarget  | _self                 | the _self browsing context          |
+
+  Scenario: paste.ui.form keeps the submitting button's entry in document order
+    Given a form[data-paste-form] inside an IO reply fragment target
+    And a field named "op" placed after the submitting button named "op"
+    When the form is submitted with that button
+    Then the request body should list the button's "op" entry before the field's
+
+  Scenario Outline: paste.ui.form leaves submissions it cannot reproduce to the browser
+    Given a form[data-paste-form] inside an IO reply fragment target with <configuration>
+    When the form is submitted
+    Then the submit event should not be prevented
+    And no request should be sent
+
+    Examples:
+      | configuration                                                  |
+      | a target of _blank                                             |
+      | a submitting button with formtarget _blank                     |
+      | a submitting button of type image                              |
+      | method post and enctype text/plain                             |
+      | a browser that does not report SubmitEvent.submitter           |
+      | a browser without XMLHttpRequest.responseURL                   |
+      | a browser whose FormData does not take the submitting button   |
+      | a browser without WeakMap                                      |
+
+  Scenario: paste.ui.io-reply-fragment-envelope places markup only
+    Given a document containing a target named "list"
+    When an envelope places markup containing a form[data-paste-form] into "list"
+    Then the form should not be enhanced by the envelope Element
+
+  Scenario: Form renders with defaults
+    Given a Form view model with:
+      | property | value      |
+      | action   | /feedback  |
+    And a trusted Html content slot
+    When I render the Form component
+    Then the HTML should contain element with class="paste-ui-form"
+    And the HTML should contain action="/feedback"
+    And the HTML should contain method="post"
+    And the HTML should contain enctype="application/x-www-form-urlencoded"
+    And the HTML should contain accept-charset="utf-8"
+    And the HTML should not contain data-paste-form
+    And the HTML should not contain id=
+    And the HTML should not contain paste-ui-form-errors
+    And the content slot should appear inside the form
+
+  Scenario: Form with backgroundSubmit emits the Element attribute
+    Given a Form view model with:
+      | property         | value     |
+      | action           | /feedback |
+      | backgroundSubmit | true      |
+      | id               | feedback  |
+      | cssClass         | wide      |
+    When I render the Form component
+    Then the HTML should contain data-paste-form
+    And the HTML should contain id="feedback"
+    And the HTML should contain element with class="paste-ui-form wide"
+
+  Scenario: Form renders form-level errors above the fields
+    Given a Form view model with:
+      | property | value      |
+      | action   | /feedback  |
+      | errors   | Try again  |
+    When I render the Form component
+    Then the HTML should contain a ul with class="paste-ui-form-errors" and role="alert"
+    And the error list should appear before the content slot
+    And each error should render as a li
+
+  Scenario Outline: Form rejects invalid model configuration
+    Given otherwise valid Form configuration
+    When I construct a Form with <property> set to <value>
+    Then construction should fail with an IllegalArgumentException
+    And no component HTML should be rendered
+
+    Examples:
+      | property       | value                        |
+      | action         | an empty string              |
+      | action         | whitespace only              |
+      | method         | an unknown method            |
+      | enctype        | an unknown enctype           |
+      | dataAttributes | a name containing a space    |
+
+  Scenario: IO reply fragment target renders the named wrapper
+    Given an IoReplyFragmentTarget view model with:
+      | property | value    |
+      | name     | feedback |
+    And a trusted Html content slot
+    When I render the IoReplyFragmentTarget component
+    Then the HTML should contain element with class="paste-ui-io-reply-fragment-target"
+    And the HTML should contain data-paste-io-reply-fragment-target="feedback"
+    And the content slot should appear inside the target
+
+  Scenario Outline: IoReplyFragmentTarget rejects invalid names
+    Given otherwise valid IoReplyFragmentTarget configuration
+    When I construct an IoReplyFragmentTarget with name set to <value>
+    Then construction should fail with an IllegalArgumentException
+    And no component HTML should be rendered
+
+    Examples:
+      | value                  |
+      | an empty string        |
+      | whitespace only        |
+      | a name with a space    |
+      | a name with a tab      |
+
+  Scenario Outline: Rendering is selected from request headers
+    Given a presenter view model
+    When the request carries X-Requested-With "<xrw>" and Accept "<accept>"
+    Then the selected rendering should be <rendering>
+
+    Examples:
+      | xrw                | accept                          | rendering       |
+      |                    |                                 | Page            |
+      |                    | text/html                       | Page            |
+      |                    | */*                             | Page            |
+      | XMLHttpRequest     | */*                             | IoReplyFragment |
+      | xmlhttprequest     | text/html                       | IoReplyFragment |
+      | fetch              | text/html                       | Page            |
+      |                    | application/json                | Json            |
+      |                    | application/json;q=0.9          | Json            |
+      | XMLHttpRequest     | application/json                | Json            |
+      | XMLHttpRequest     | application/json, text/html     | IoReplyFragment |
+      |                    | text/html, application/json     | Page            |
+      |                    | application/json;q=0            | Page            |
+      | XMLHttpRequest     | application/json;q=0            | IoReplyFragment |
+      |                    | text/html;q=0, application/json | Json            |
+      |                    | ;                               | Page            |
+      |                    | application/json, ;             | Json            |
+
+  Scenario: One outcome carries one status code in every rendering
+    Given a presenter view model whose outcome is a validation failure with status 400
+    When the view model is rendered as Page, IoReplyFragment, and JSON
+    Then every rendering should respond with status 400
+    And every negotiated response should carry Vary "X-Requested-With, Accept"
+
+  Scenario: IO reply fragment rendering emits the IO reply fragment template only
+    Given a presenter view model rendered as IoReplyFragment
+    Then the body should be the IO reply fragment template's output alone
+    And the body should not contain html, head, or body elements
+    And the body should not contain layout markup, asset includes, or inline script
+
+  Scenario: JSON rendering without an encoder is not acceptable
+    Given a presenter view model with no JSON encoder
+    When the request selects the Json rendering
+    Then no body should be rendered
+    And the application should respond 406
+
+  Scenario: IO reply fragment envelope success shape
+    Given an IO reply fragment update succeeds with status 200
+    Then the envelope meta should carry code 200, message "OK", and a finite time
+    And the envelope data should carry fragments by name with markup, and optional js and css lists
+    And the envelope data should carry variables as string values
+    And the body should be application/json with Vary "X-Requested-With, Accept"
+
+  Scenario: IO reply fragment envelope failure shape
+    Given an IO reply fragment update fails with status 400
+    Then the envelope meta should carry code 400, message "Bad Request", and a finite time
+    And meta should carry error_type "param_error", error_code 400, and error_detail
+    And the envelope data should be empty
+
+  Scenario: paste.ui.io-reply-fragment-envelope applies an envelope only on success
+    Given a document containing a div with data-paste-io-reply-fragment-target="feedback"
+    When paste.ui.io-reply-fragment-envelope applies an envelope whose status or meta code is not 200
+    Then the target content should be unchanged and the result should be 0
+    When paste.ui.io-reply-fragment-envelope applies an envelope with status 200 and meta code 200
+    Then each matching target's content should be replaced by its markup
+    And elements with data-paste-io-reply-fragment-bind should receive the supplied variables
+    And the result should be the number of target elements replaced, root included when it carries the attribute
+
+  Scenario: paste.ui.form swaps HTML responses of any status
+    Given a form[data-paste-form] inside a div with data-paste-io-reply-fragment-target="feedback"
+    When the form is submitted
+    Then the request should go through paste.io with X-Requested-With
+    And the target should be aria-busy while in flight
+    When the response arrives as text/html with status 400
+    Then the target content should be replaced with the response body
+    And forms inside the new content should be initialized
+    And focus should move to the first role="alert" or role="status"
+
+  Scenario: paste.ui.form leaves forms without an IO reply fragment target alone
+    Given a form[data-paste-form] with no enclosing data-paste-io-reply-fragment-target
+    When the form is submitted
+    Then the submit event should not be prevented
+    And no request should be sent
+
+  Scenario: paste.ui.form resubmits natively on non-HTML or network failure
+    Given a form[data-paste-form] inside an IO reply fragment target
+    When the background request returns a non-HTML response or fails at the network level
+    Then the form should be resubmitted natively with the same submitter
+    And the re-fired submit should not be intercepted
+
+  Scenario: paste.ui.form never places a response that left the page's origin
+    Given a form[data-paste-form] inside an IO reply fragment target
+    When the background request is redirected to a different origin and returns text/html
+    Then the target content should be unchanged
+    And the form should be resubmitted natively with the same submitter
+
+  Scenario: paste.ui.form ignores submits while a request is in flight
+    Given a form[data-paste-form] inside an IO reply fragment target with a request in flight
+    When the form is submitted again
+    Then the submit should be prevented
+    And no second request should be sent
+
+  Scenario Outline: paste.ui.form leaves cross-origin actions and unsupported methods alone
+    Given a form[data-paste-form] inside an IO reply fragment target with <configuration>
+    When the form is submitted
+    Then the submit event should not be prevented
+    And no request should be sent
+
+    Examples:
+      | configuration                              |
+      | an action resolving to a different origin  |
+      | a method other than get or post            |
+
+  Scenario: paste.ui.form GET submit replaces the action's query
+    Given a form[data-paste-form] inside an IO reply fragment target
+    And the form has method "get" and an action carrying a query and a fragment
+    When the form is submitted
+    Then the request URL should carry the form's fields as its query
+    And the action's original query and fragment should not appear in the request URL

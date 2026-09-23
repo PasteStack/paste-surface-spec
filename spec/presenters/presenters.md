@@ -8,9 +8,18 @@ Presenters are **OPTIONAL**. They orchestrate complex pages and enable JSON/HTML
 |----------|----------------|
 | Simple static site | No — use ViewModels directly in templates |
 | Site with JSON API | Yes — `present()` for HTML, `presentAsJson()` for API |
-| AJAX partials | Yes — return partial HTML |
+| AJAX partials | Yes — render the same view model as an [IO reply fragment](../rendering/rendering.md) |
 | Shared logic across routes | Yes — centralize in presenter |
 | Testable presentation | Yes — unit test presenters |
+
+## Rendering
+
+One view model renders as a full page, an IO reply fragment, or JSON, chosen
+from the request headers; see
+[Rendering a View Model](../rendering/rendering.md). The IO reply fragment is
+what `paste.ui.form` swaps into its target on a background submit, so a
+presenter that re-renders after a failed submit needs no separate partial
+template.
 
 ## PagePresenter (Base)
 
