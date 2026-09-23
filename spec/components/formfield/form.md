@@ -1,6 +1,104 @@
-# Form Fields
+# Forms and Form Fields
 
-Paste form field components with bundled SCSS/JS from paste-elements.
+Form and form field components. Field view models carry their own validation
+messages, so a presenter that re-renders a view model after a failed submit
+shows the errors in place. The `paste.ui.form` Element optionally submits a
+[Form](#form) in the background and swaps the returned IO reply fragment into
+its target; see [Rendering a View Model](../../rendering/rendering.md). No
+Element styles the fields.
+
+## Form
+
+A `<form>` element with a content slot for its fields.
+
+### Properties
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `action` | string | yes | - | Submit URL |
+| `method` | string | no | `"post"` | `get` or `post` |
+| `enctype` | string | no | `"application/x-www-form-urlencoded"` | `application/x-www-form-urlencoded` or `multipart/form-data` |
+| `id` | string | no | `None` | Element id |
+| `backgroundSubmit` | boolean | no | `false` | Emit `data-paste-form` so `paste.ui.form` submits in the background |
+| `errors` | Seq[string] | no | empty | Form-level messages, rendered above the fields |
+| `cssClass` | string | no | `""` | Additional CSS classes on the `<form>` |
+| `dataAttributes` | Map | no | `{}` | Custom `data-*` attributes |
+
+Construction rejects a blank `action`, a `method` or `enctype` outside the
+listed values (an implementation with enumerations makes those
+unrepresentable), and a `dataAttributes` name that does not match
+`[a-z0-9][a-z0-9._-]*` (`IllegalArgumentException`, including through `copy`).
+
+### HTML Output
+
+```html
+<form class="paste-ui-form {cssClass}"
+      id="{id}"
+      action="{action}"
+      method="{method}"
+      enctype="{enctype}"
+      accept-charset="utf-8"
+      data-paste-form
+      {dataAttributes.map(([k,v]) => `data-${k}="${v}"`)}>
+  <ul class="paste-ui-form-errors" role="alert">
+    <li>{error}</li>
+  </ul>
+  <!-- content slot -->
+</form>
+```
+
+`id` appears only when supplied, `data-paste-form` only when `backgroundSubmit`
+is true, and the error list only when `errors` is nonempty.
+
+### Element Contract: `paste.ui.form`
+
+The Element enhances every `form[data-paste-form]` that sits inside an
+[IO reply fragment target](../../rendering/rendering.md#io-reply-fragment-targets).
+Paste loads at the end of the document, after the markup it enhances, so every
+form present when the module runs is enhanced immediately, and forms placed by
+an IO reply fragment are enhanced as they are placed. Each form is enhanced
+once. The Element exposes no public API.
+
+On submit it:
+
+1. Reads the submission the way the browser does: the submitting button's
+   `formaction`, `formmethod`, `formenctype` and `formtarget` override the
+   form's `action`, `method`, `enctype` and `target`; without either target,
+   the document's `<base target>` applies. A nonempty action resolves
+   against the document's base URL; an empty one is the document's URL.
+2. Leaves the event alone when it was already default-prevented, when the form
+   has no enclosing `[data-paste-io-reply-fragment-target]`, when the browser
+   does not report the submitting button (`SubmitEvent.submitter`), when the
+   submitting button is an image control, when the method is neither `get` nor
+   `post`, when a `post` is encoded as `text/plain`, when the target names a
+   browsing context other than `_self`, when the resolved action is not on the
+   page's origin, when the browser's `FormData` does not take the submitting
+   button (`new FormData(form, submitter)`), or when `WeakMap`,
+   `XMLHttpRequest`, `XMLHttpRequest.responseURL`, `FormData`,
+   `URLSearchParams` or `URL` is unavailable. The browser then submits
+   normally. Only same-origin markup is ever placed in the page.
+3. Prevents the navigation and sends the request through `paste.io`, which adds
+   `X-Requested-With: XMLHttpRequest`. The request matches what the browser would
+   have sent: the resolved action and method, the form's fields and the
+   submitting button's `name`/`value` in document order, encoded as the
+   resolved enctype
+   (URL-encoded body, multipart body, or for `get` a query string that replaces
+   any query already in the `action`).
+4. Ignores further submits of the same form while the request is in flight, and
+   marks the target `aria-busy="true"` for its duration.
+5. On an HTML response of any status whose final URL, after any redirect, is
+   on the page's origin, replaces the target's content with the response body,
+   initializes forms inside it, and moves focus to the first `[role="alert"]`
+   or `[role="status"]` in the new content when one exists.
+6. On a network failure, a non-HTML response, or a response whose final URL
+   left the page's origin, submits the form natively, so the server's
+   full-page rendering reports the outcome.
+
+A native resubmission after a network failure can repeat a request the server
+already processed. Forms whose action is not idempotent carry an idempotency key
+the server honours.
+
+---
 
 ## FormField (Base Trait)
 
@@ -11,6 +109,10 @@ Base contract for all form fields.
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
 | `name` | string | yes | Field name |
+
+`dataAttributes` on Input, Button, and Textarea accept only names matching
+`[a-z0-9][a-z0-9._-]*`; other names fail construction
+(`IllegalArgumentException`, including through `copy`).
 
 ---
 
@@ -25,11 +127,18 @@ Inherits from `FormField`, plus:
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `type` | string | no | `"text"` | Input type (text, email, password, etc.) |
+| `id` | string | no | `null` | Element id; `label` links to it |
+| `label` | string | no | `null` | Label text; carries `*` when required |
+| `description` | string | no | `null` | Help text below the input |
 | `value` | string | no | `""` | Current value |
 | `placeholder` | string | no | `null` | Placeholder text |
+| `required` | boolean | no | `false` | Required attribute and label marker |
+| `disabled` | boolean | no | `false` | Disabled attribute |
 | `maxLength` | int | no | `null` | Maximum length |
 | `pattern` | string | no | `null` | Validation pattern |
 | `autocomplete` | string | no | `null` | Autocomplete hint |
+| `errors` | Seq[string] | no | empty | Validation messages below the input |
+| `dataAttributes` | Map | no | `{}` | Custom `data-*` attributes |
 
 ### Example (Scala)
 
@@ -55,25 +164,25 @@ case class Input(
 ### HTML Output
 
 ```html
-<div class="paste-ui-form-field paste-ui-form-field-input {hasErrors ? 'has-error' : ''}">
-  {label && <label for="{id}">{label}{required && <span class="required">*</span>}</label>}
-  
-  <input 
+<div class="paste-ui-formfield paste-ui-formfield-input {errors.nonEmpty ? 'has-error' : ''}">
+  {label && <label {id && for="{id}"}>{label}{required && <span class="required">*</span>}</label>}
+
+  <input
     type="{type}"
-    id="{id}"
+    {id && id="{id}"}
     name="{name}"
     value="{value}"
-    placeholder="{placeholder}"
+    {placeholder && placeholder="{placeholder}"}
     {required && 'required'}
     {disabled && 'disabled'}
-    maxlength="{maxLength}"
-    pattern="{pattern}"
-    autocomplete="{autocomplete}"
+    {maxLength && maxlength="{maxLength}"}
+    {pattern && pattern="{pattern}"}
+    {autocomplete && autocomplete="{autocomplete}"}
     {dataAttributes.map(([k,v]) => `data-${k}="${v}"`)}
   >
-  
-  {description && <p class="paste-ui-form-description">{description}</p>}
-  {errors.map(e => <p class="paste-ui-form-error">{e}</p>)}
+
+  {description && <p class="paste-ui-formfield-description">{description}</p>}
+  {errors.map(e => <p class="paste-ui-formfield-error">{e}</p>)}
 </div>
 ```
 
@@ -119,28 +228,37 @@ Inherits from `FormField`, plus:
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
+| `id` | string | no | `null` | Element id; `label` links to it |
+| `label` | string | no | `null` | Label text; carries `*` when required |
+| `description` | string | no | `null` | Help text below the textarea |
 | `value` | string | no | `""` | Current value |
 | `placeholder` | string | no | `null` | Placeholder text |
 | `rows` | int | no | `4` | Number of visible rows |
+| `required` | boolean | no | `false` | Required attribute and label marker |
+| `disabled` | boolean | no | `false` | Disabled attribute |
 | `maxLength` | int | no | `null` | Maximum length |
+| `errors` | Seq[string] | no | empty | Validation messages below the textarea |
+| `dataAttributes` | Map | no | `{}` | Custom `data-*` attributes |
 
 ### HTML Output
 
 ```html
-<div class="paste-ui-form-field paste-ui-form-field-textarea">
-  {label && <label for="{id}">{label}</label>}
-  
+<div class="paste-ui-formfield paste-ui-formfield-textarea {errors.nonEmpty ? 'has-error' : ''}">
+  {label && <label {id && for="{id}"}>{label}{required && <span class="required">*</span>}</label>}
+
   <textarea
-    id="{id}"
+    {id && id="{id}"}
     name="{name}"
     rows="{rows}"
-    placeholder="{placeholder}"
-    maxlength="{maxLength}"
+    {placeholder && placeholder="{placeholder}"}
+    {maxLength && maxlength="{maxLength}"}
     {required && 'required'}
     {disabled && 'disabled'}
+    {dataAttributes.map(([k,v]) => `data-${k}="${v}"`)}
   >{value}</textarea>
-  
-  {description && <p class="paste-ui-form-description">{description}</p>}
+
+  {description && <p class="paste-ui-formfield-description">{description}</p>}
+  {errors.map(e => <p class="paste-ui-formfield-error">{e}</p>)}
 </div>
 ```
 
@@ -180,9 +298,11 @@ case class Hidden(
 
 Templates are located at:
 
-| Template | Twirl | Jinja/Nunjucks |
-|----------|-------|----------------|
-| Input | `paste.surface.formfield.html.input` | `paste/surface/formfield/input.html` |
-| Button | `paste.surface.formfield.html.button` | `paste/surface/formfield/button.html` |
-| Textarea | `paste.surface.formfield.html.textarea` | `paste/surface/formfield/textarea.html` |
-| Hidden | `paste.surface.formfield.html.hidden` | `paste/surface/formfield/hidden.html` |
+| Template | Twirl |
+|----------|-------|
+| Input | `paste.surface.components.formfield.html.input` |
+| Button | `paste.surface.components.formfield.html.button` |
+| Textarea | `paste.surface.components.formfield.html.textarea` |
+| Hidden | `paste.surface.components.formfield.html.hidden` |
+| Form | `paste.surface.components.formfield.html.form` |
+| IoReplyFragmentTarget | `paste.surface.components.html.ioReplyFragmentTarget` |
