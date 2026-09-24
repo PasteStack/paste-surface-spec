@@ -58,6 +58,15 @@ model, so all three renderings show the same outcome.
   origin, a non-HTML response, or a network failure makes it resubmit
   natively.
 
+## Framework bindings
+
+An implementation may also ship a binding for a web framework — a directive
+set, middleware or equivalent — that applies the selection and response rules
+above. The binding carries no rules of its own: it reads the same headers,
+renders through the same presentation, and answers the same status, content
+type and `Vary`. `paste-surface-pekko` is the Pekko HTTP binding of the Scala
+implementation.
+
 ## IO reply fragment targets
 
 An IO reply fragment lands in an element marked with its name:

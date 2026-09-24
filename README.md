@@ -7,6 +7,7 @@ Language-agnostic specification for PasteStack Surface Rendering Layer.
 This specification defines the contracts for rendering HTML templates using PasteStack. Implementations:
 
 - **Scala/Twirl** → `paste-surface-scala` ✓
+- **Pekko HTTP binding** → `paste-surface-pekko` (shipped with the Scala implementation)
 - **Python/Jinja** → `paste-surface-python` (planned)
 - **Basic HTML** → Use `paste-assetgraph` directly (no surface needed)
 
