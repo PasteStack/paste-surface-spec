@@ -1,3 +1,15 @@
+# paste-surface-spec v0.4.0
+
+**Date:** 2026-09-24
+
+## Added
+
+- Framework bindings of the rendering contract (`spec/rendering/rendering.md`):
+  an implementation may ship a binding for a web framework that applies the
+  selection and response rules and carries no rules of its own.
+  `paste-surface-pekko` is the first, for Pekko HTTP in the Scala
+  implementation.
+
 # paste-surface-spec v0.3.0
 
 **Date:** 2026-09-23
