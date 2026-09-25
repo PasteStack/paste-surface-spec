@@ -8,8 +8,13 @@ Base contract for asset injection.
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `debugMode` | boolean | no | `false` | Enable debug/unminified assets |
-| `pasteIncludes` | string[] | no | `[]` | List of asset paths to include |
+| `debugMode` | boolean | no | `false` | Enable debug/unminified assets (direct mode only) |
+| `pasteIncludes` | string[] | no | `[]` | List of asset paths to include (direct mode) |
+| `jamModules` | string[] | no | `[]` | JAM module names; non-empty selects JAM mode |
+| `jamInline` | boolean | no | `false` | Force the group's markup inline in JAM mode |
+
+`debugMode` applies to direct mode only: in JAM mode minification is decided
+by the paste-assetgraph build, not by the include.
 
 ---
 
@@ -21,32 +26,42 @@ CSS asset injection.
 
 Inherits from `AssetInclude`.
 
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `jamMedia` | string | no | none | Stylesheet media for the JAM group (e.g. `print`) |
+
 ### Example (Scala)
 
 ```scala
 trait AssetInclude {
   def debugMode: Boolean
   def pasteIncludes: Seq[String]
+  def jamModules: Seq[String]
+  def jamInline: Boolean
+  final def useJam: Boolean = jamModules.nonEmpty
 }
 
 case class CSSInclude(
   debugMode: Boolean = false,
-  pasteIncludes: Seq[String] = Seq.empty
+  pasteIncludes: Seq[String] = Seq.empty,
+  jamModules: Seq[String] = Seq.empty,
+  jamInline: Boolean = false,
+  jamMedia: Option[String] = None
 ) extends AssetInclude
 ```
 
 ### HTML Output
 
 ```html
-<!-- Debug mode: use source files -->
+<!-- Direct mode, debug: use source files -->
 <link rel="stylesheet" href="/css/styles.css" type="text/css">
 
-<!-- Prod mode (debugMode=false): auto-append .min -->
+<!-- Direct mode, prod (debugMode=false): auto-append .min -->
 <link rel="stylesheet" href="/css/styles.min.css" type="text/css">
-
-<!-- Or with manifest lookup -->
-<link rel="stylesheet" href="{manifest.lookup(include)}" type="text/css">
 ```
+
+In JAM mode the emitted markup is produced by paste-assetgraph — see
+[JAM Mode Rendering](#jam-mode-rendering) below.
 
 ---
 
@@ -60,11 +75,9 @@ Inherits from `AssetInclude`.
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `async` | boolean | no | `false` | Load scripts asynchronously |
-| `defer` | boolean | no | `true` | Defer script execution |
-| `jamModules` | Seq[string] | no | empty | Module names for the JAM request; non-empty selects JAM mode |
-| `jamVersion` | string | no | `""` | The path's single cache segment: asset build version or manifest group timestamp |
-| `jamModuleVersions` | Map[string, string] | no | empty | Per-module versions from the asset manifest, appended as `+v{version}` |
+| `async` | boolean | no | `false` | Load scripts asynchronously (direct mode only) |
+| `defer` | boolean | no | `true` | Defer script execution (direct mode only) |
+| `jamSync` | boolean | no | `false` | Emit a synchronous script tag in JAM mode |
 
 ### Example (Scala)
 
@@ -74,41 +87,52 @@ case class JSInclude(
   pasteIncludes: Seq[String] = Seq.empty,
   async: Boolean = false,
   defer: Boolean = true,
-  // JAM mode: cacheable path /paste/{version}/{modules}.js
   jamModules: Seq[String] = Seq.empty,
-  jamVersion: String = "",
-  jamModuleVersions: Map[String, String] = Map.empty
-) extends AssetInclude {
-  def useJam: Boolean = jamModules.nonEmpty
-
-  def jamUrl: String = {
-    val modules = jamModules.sorted
-      .map(module => jamModuleVersions.get(module).fold(module)(version => s"$module+v$version"))
-      .mkString("~")
-    val suffix = if (debugMode) ".js" else ".min.js"
-    s"/paste/$jamVersion/$modules$suffix"
-  }
-}
+  jamInline: Boolean = false,
+  jamSync: Boolean = false
+) extends AssetInclude
 ```
 
-### JAM Path Contract
+### JAM Mode Rendering
 
-The JAM server owns this path shape: one immutable version segment, then the
-module list, then the extension. Implementations MUST NOT add further path
-segments — the server treats everything after the version segment as the module
-list, so an extra segment is parsed as part of the first module name and that
-module is silently dropped from the response.
+A non-empty `jamModules` selects JAM mode. Rendering an include in JAM mode
+delegates to the per-render page object of the language's paste-assetgraph
+runtime:
 
+- a CSS include records one jam event (`css = jamModules`, `inline =
+  jamInline`, `media = jamMedia`) and emits that page's CSS dump;
+- a JS include records one jam event (`js = jamModules`, `inline = jamInline`,
+  `sync = jamSync`) and emits that page's JS dump.
+
+The CSS include renders in `<head>` and the JS include at the end of `<body>`
+**from the same page object**, so modules an earlier dump already delivered
+are not repeated in a later one.
+
+Implementations MUST NOT build JAM URLs, timestamps, version tags, or
+dependency lists: URL format, dependency expansion, inlining and markup are
+owned by paste-assetgraph — see
+[JAM_SPEC.md](https://gitlab.com/tomshley/brands/global/tware/tech/products/paste/paste-assetgraph/-/blob/develop/JAM_SPEC.md)
+for the URL and markup contract.
+
+The application creates and owns the paste-assetgraph `Paste` instance and
+passes a fresh page object into each render — the include renderers augment
+the page, they never own the application lifecycle:
+
+```scala
+// App-owned, created once at startup:
+val assetgraph = Paste.fromClasspath()
+
+// Per render — a fresh page object:
+val page = assetgraph.page()
+
+// In <head>, from the CSS include:
+page.jam(css = cssInclude.jamModules, inline = cssInclude.jamInline, media = cssInclude.jamMedia)
+val headContent = page.dumpCss()
+
+// At the end of <body>, from the JS include:
+page.jam(js = jsInclude.jamModules, inline = jsInclude.jamInline, sync = jsInclude.jamSync)
+val scriptIncludes = page.dumpJs()
 ```
-/paste/{version}/{module}[+v{version}]{~{module}[+v{version}]}*[.min].{js|css}
-```
-
-- `{version}` is the group's cache key: the asset build version, or the manifest's
-  group timestamp when the caller composes the path from a manifest.
-- Modules are separated by `~`. A comma is accepted for backward compatibility.
-- A per-module `+v{version}` suffix is optional; the server strips it. Supply it
-  from the asset manifest so a single changed module invalidates the path.
-- Modules are sorted so the same set always produces the same cacheable path.
 
 ### HTML Output
 
@@ -121,16 +145,18 @@ module is silently dropped from the response.
 <script src="/js/app.min.js" type="text/javascript" defer></script>
 ```
 
-**JAM mode** (dependency resolution via cacheable URL):
+**JAM mode** — markup produced by paste-assetgraph (the shape below is
+assetgraph's output, not something the include composes):
+
 ```html
-<!-- Cacheable path: /paste/{version}/{modules}.js -->
-<script src="/paste/2025.02.02/paste.dom~paste.ui.heroscroll.min.js" type="text/javascript" defer></script>
+<!-- CSS include dump in <head> -->
+<link rel="stylesheet" href="/paste/1770465409/site.theme+v1.0.min.css"/>
 
-<!-- Debug mode -->
-<script src="/paste/2025.02.02/paste.dom~paste.ui.heroscroll.js" type="text/javascript" defer></script>
-
-<!-- Composed from a manifest: group timestamp plus per-module versions -->
-<script src="/paste/1770465409/paste.dom+v1.0~paste.ui.heroscroll+v3.0.min.js" type="text/javascript" defer></script>
+<!-- JS include dump at the end of <body>: inlined runtime + async loader -->
+<script type="text/javascript">…paste runtime source…
+;
+paste.config({packagesUrl:'/paste/71f8e72a3d6b/'});</script>
+<script type="text/javascript">(function(d,r){d('paste.dom').isLoading=d('paste.event').isLoading=!0;r('/paste/1770462000/paste.dom+v2.0~paste.event+v1.0.min.js');})(paste.define,paste.require);</script>
 ```
 
 ### Usage Examples
@@ -139,61 +165,61 @@ module is silently dropped from the response.
 // Direct mode - specify file paths
 JSInclude(pasteIncludes = Seq("/js/paste.js", "/js/app.js"))
 
-// JAM mode - cacheable URL keyed by the asset build version
-JSInclude(
-  jamModules = Seq("paste.dom", "paste.ui.heroscroll"),
-  jamVersion = "2025.02.02"
-)
-// Output: /paste/2025.02.02/paste.dom~paste.ui.heroscroll.min.js
+// JAM mode - module names only; the page dump emits the markup
+JSInclude(jamModules = Seq("paste.dom", "paste.ui.heroscroll"))
 
-// JAM mode with debug
-JSInclude(
-  jamModules = Seq("paste.dom", "paste.ui.heroscroll"),
-  jamVersion = "2025.02.02",
-  debugMode = true
-)
-// Output: /paste/2025.02.02/paste.dom~paste.ui.heroscroll.js
-
-// JAM mode with manifest data - per-module versions invalidate one module
-JSInclude(
-  jamModules = Seq("paste.dom", "paste.ui.heroscroll"),
-  jamVersion = "1770465409",
-  jamModuleVersions = Map("paste.dom" -> "1.0", "paste.ui.heroscroll" -> "3.0")
-)
-// Output: /paste/1770465409/paste.dom+v1.0~paste.ui.heroscroll+v3.0.min.js
+// JAM mode - inline the group's markup regardless of size
+JSInclude(jamModules = Seq("paste.dom"), jamInline = true)
 ```
 
 ### Why Cacheable URLs?
 
-Query strings (`?modules=...`) are not cached by CDNs. Path-based URLs are:
+paste-assetgraph produces path-based URLs rather than query strings
+(`?modules=...`). Whether a CDN caches a query-string URL depends on its
+configuration; the path form avoids relying on query-key configuration at
+all:
+
 - CDN cacheable with long TTL
-- Version in path enables cache busting on deploy
-- Checksum ensures content integrity
+- The timestamp segment and per-module `+vN.0` tags — carrying the version's
+  full content hash as `+vN.0-h{hash}` under paste-assetgraph's default
+  `jam.hash-urls` policy — bust the cache when any delivered module is
+  rebuilt
+- The path names the exact filtered group in dependency order, so a module
+  already delivered on the page is never fetched twice
 
 ---
 
+## Template Paths
+
+| Include | Twirl | Jinja/Nunjucks |
+|---------|-------|----------------|
+| CSS include | `paste.surface.includes.html.css` | `paste/surface/includes/css.html` |
+| JS include | `paste.surface.includes.html.js` | `paste/surface/includes/js.html` |
+
+Both renderers take `(include, page)`: `page` is the per-render
+paste-assetgraph page object and is optional (Scala `Option[PastePage] =
+None`). Direct mode ignores it. JAM mode — a non-empty `jamModules` — with no
+page MUST fail the render with a clear error naming the missing page rather
+than emit nothing: a silently missing script tag is the failure this contract
+exists to prevent.
+
 ## Manifest Integration
 
-When using `paste-assetgraph`, assets are resolved via manifest:
-
-```json
-{
-  "version": "2025.02.02.1",
-  "assets": {
-    "paste.js": {
-      "path": "/static/js/paste.abc123.min.js",
-      "dependencies": [],
-      "hash": "abc123"
-    },
-    "paste.dom": {
-      "path": "/static/js/paste.dom.def456.min.js", 
-      "dependencies": ["paste"],
-      "hash": "def456"
-    }
-  }
-}
-```
+The module names, versions, timestamps and dependencies behind a JAM-mode
+include come from the `paste-assetgraph` manifest — see *Manifest Structure*
+in
+[JAM_SPEC.md](https://gitlab.com/tomshley/brands/global/tware/tech/products/paste/paste-assetgraph/-/blob/develop/JAM_SPEC.md).
 
 Templates should support both:
+
 1. **Direct includes** — Static paths for simple sites
-2. **Manifest lookup** — Dynamic resolution for sites using assetgraph
+2. **JAM mode** — Module names rendered through the paste-assetgraph page
+   object for sites using assetgraph
+
+## Migration
+
+- `jamVersion`, `jamModuleVersions` and `JSInclude.jamUrl` are removed
+  (breaking): surfaces no longer compose JAM URLs — a versioned URL names the
+  exact filtered group paste-assetgraph expands and serves.
+- JAM-mode includes now require a paste-assetgraph page object at render
+  time: the caller supplies it, the renderer records on it and emits its dump.

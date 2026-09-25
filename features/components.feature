@@ -138,28 +138,34 @@ Feature: Surface Component Rendering
     And the HTML should contain link rel="canonical"
     And the HTML should contain og:site_name meta tag
 
-  Scenario: JSInclude renders JAM cacheable URL
+  Scenario: JSInclude in JAM mode delegates markup to the paste-assetgraph page
     Given a JSInclude view model with:
-      | property          | value                                     |
-      | jamModules        | paste.dom,paste.event,paste.ui.heroscroll |
-      | jamVersion        | 1770465409                                |
-      | jamModuleVersions | paste.dom=1.0,paste.ui.heroscroll=3.0     |
+      | property   | value                                     |
+      | jamModules | paste.dom,paste.event,paste.ui.heroscroll |
+    And a fresh paste-assetgraph page object
     When I render the JS includes
-    Then the output should contain a script tag with defer
-    And the src should be a cacheable JAM path /paste/{version}/{module+vN.0~...}.min.js
-    And the path should carry exactly one segment before the module list
-    And the modules in the path should use ~ as the separator
-    And a module with a supplied version should carry its + version suffix
-    And a module without a supplied version should appear as its bare name
-    And the modules in the path should be sorted alphabetically
+    Then the page should record one jam event with js=[paste.dom,paste.event,paste.ui.heroscroll]
+    And the output should equal that page's js dump verbatim
+    And the rendered include should compose no URL itself
 
-  Scenario: JSInclude JAM path omits versions when none are supplied
+  Scenario: CSSInclude in JAM mode delegates markup to the paste-assetgraph page
+    Given a CSSInclude view model with:
+      | property   | value                   |
+      | jamModules | site.theme,site.palette |
+      | jamMedia   | print                   |
+    And a fresh paste-assetgraph page object
+    When I render the CSS includes
+    Then the page should record one jam event with css=[site.theme,site.palette] and media="print"
+    And the output should equal that page's css dump verbatim
+    And the rendered include should compose no URL itself
+
+  Scenario: JSInclude in JAM mode without a page object fails the render
     Given a JSInclude view model with:
-      | property   | value                    |
-      | jamModules | paste.dom,paste.event    |
-      | jamVersion | 2025.02.02               |
+      | property   | value                 |
+      | jamModules | paste.dom,paste.event |
+    And no paste-assetgraph page object
     When I render the JS includes
-    Then the src should be /paste/2025.02.02/paste.dom~paste.event.min.js
+    Then the render should fail with an error naming the missing page
 
   Scenario: CSSInclude renders stylesheet link
     Given a CSSInclude view model with:

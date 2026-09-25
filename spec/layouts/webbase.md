@@ -115,5 +115,22 @@ val config = SurfaceConfig.load()
 
 // Use factories for ViewModels
 val pageMeta = PageMetaFactory.forHomePage(config.site)
-val jsIncludes = IncludesFactory.forPasteJam(config.assets)
+val cssIncludes = IncludesFactory.forCssJam(Seq("site.theme"))
+val jsIncludes = IncludesFactory.forPasteJam()
+```
+
+The app owns the paste-assetgraph `Paste` instance — created once, e.g.
+`val assetgraph = Paste.fromClasspath()` — and hands each render a fresh
+`assetgraph.page()`. In the page template the page arrives as a parameter and
+goes to both include renderers, which record their jam events on it and dump
+markup from it:
+
+```scala
+@(cssIncludes: CSSInclude, jsIncludes: JSInclude, page: PastePage)
+
+@* headContent — records the css jam event, emits page.dumpCss() *@
+@paste.surface.includes.html.css(cssIncludes, Some(page))
+
+@* scriptIncludes — records the js jam event, emits page.dumpJs() *@
+@paste.surface.includes.html.js(jsIncludes, Some(page))
 ```
