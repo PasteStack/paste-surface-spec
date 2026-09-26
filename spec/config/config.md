@@ -53,7 +53,7 @@ val config = SurfaceConfig.load()
 
 // Use throughout app
 val pageMeta = PageMetaFactory.forHomePage(config.site)
-val jsIncludes = IncludesFactory.forPasteJam()
+val jam = IncludesFactory.forPasteJam()
 ```
 
 ## Environment Variables

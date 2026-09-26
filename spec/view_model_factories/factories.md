@@ -55,15 +55,15 @@ Creates `Hero` ViewModels for common use cases.
 
 ## IncludesFactory
 
-Creates asset includes, aggregating JAM modules.
+Creates direct asset includes and JAM events, aggregating module names.
 
 ### Methods
 
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
-| `forPasteJam` | additionalModules? | JSInclude | Paste core + UI via JAM |
-| `forForms` | — | JSInclude | Paste core + form modules via JAM |
-| `forCssJam` | modules | CSSInclude | CSS modules via JAM |
+| `forPasteJam` | additionalModules? | Jam | Paste core + UI modules |
+| `forForms` | — | Jam | Paste core + form modules |
+| `forCssJam` | modules | Jam | CSS modules |
 | `forDirectJS` | paths, debugMode? | JSInclude | Direct file paths |
 | `forDirectCSS` | paths, debugMode? | CSSInclude | Direct file paths |
 
@@ -75,14 +75,14 @@ object IncludesFactory {
   val PASTE_UI = Seq("paste.ui.heroscroll", "paste.ui.stickynav", "paste.ui.smoothscroll")
   val PASTE_FORMS = Seq("paste.ui.autogrow", "paste.ui.utilities.throttle")
 
-  def forPasteJam(additionalModules: Seq[String] = Seq.empty): JSInclude =
-    JSInclude(jamModules = PASTE_CORE ++ PASTE_UI ++ additionalModules)
+  def forPasteJam(additionalModules: Seq[String] = Seq.empty): Jam =
+    Jam(js = PASTE_CORE ++ PASTE_UI ++ additionalModules)
 
-  def forForms(): JSInclude =
-    JSInclude(jamModules = PASTE_CORE ++ PASTE_FORMS)
+  def forForms(): Jam =
+    Jam(js = PASTE_CORE ++ PASTE_FORMS)
 
-  def forCssJam(modules: Seq[String]): CSSInclude =
-    CSSInclude(jamModules = modules)
+  def forCssJam(modules: Seq[String]): Jam =
+    Jam(css = modules)
 
   def forDirectJS(paths: Seq[String], debugMode: Boolean = false): JSInclude =
     JSInclude(pasteIncludes = paths, debugMode = debugMode)
@@ -94,8 +94,8 @@ object IncludesFactory {
 
 ### Output
 
-JAM-mode includes carry module names only — no versions, timestamps or
-composed URLs. Rendering them is the per-render page object's job: the
-include records its jam event and emits the page's dump, and the markup shape
-and URL format are owned by paste-assetgraph. The full contract is stated in
+Jams carry module names only — no versions, timestamps or composed URLs.
+Rendering them is the per-render page object's job: the layout records the
+jam and emits the page's dumps, and the markup shape and URL format are
+owned by paste-assetgraph. The full contract is stated in
 [`view_models/includes.md`](../view_models/includes.md).

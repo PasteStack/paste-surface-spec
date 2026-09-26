@@ -42,7 +42,8 @@ Standard page data.
 case class PageViewModel(
   pageMeta: PageMeta,
   cssIncludes: CSSInclude,
-  jsIncludes: JSInclude
+  jsIncludes: JSInclude,
+  jam: Jam = Jam()
 )
 ```
 
@@ -56,7 +57,8 @@ case class HomePageViewModel(
   mainHero: Hero,
   sections: Seq[Hero],
   cssIncludes: CSSInclude,
-  jsIncludes: JSInclude
+  jsIncludes: JSInclude,
+  jam: Jam = Jam()
 )
 ```
 
@@ -75,7 +77,8 @@ class HomePagePresenter(
       mainHero = HeroFactory.forHomePage("main"),
       sections = Seq(HeroFactory.forSection("features")),
       cssIncludes = IncludesFactory.forDirectCSS(Seq("/css/main.css")),
-      jsIncludes = IncludesFactory.forPasteJam(customModules)
+      jsIncludes = JSInclude(),
+      jam = IncludesFactory.forPasteJam(customModules)
     )
   }
 }

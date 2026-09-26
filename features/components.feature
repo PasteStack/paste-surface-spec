@@ -138,54 +138,46 @@ Feature: Surface Component Rendering
     And the HTML should contain link rel="canonical"
     And the HTML should contain og:site_name meta tag
 
-  Scenario: JSInclude in JAM mode delegates markup to the paste-assetgraph page
-    Given a JSInclude view model with:
-      | property   | value                                     |
-      | jamModules | paste.dom,paste.event,paste.ui.heroscroll |
+  Scenario: A jam recorded on the page dumps verbatim markup
+    Given a Jam with js=[paste.dom,paste.event,paste.ui.heroscroll]
     And a fresh paste-assetgraph page object
-    When I render the JS includes
+    When the layout records the jam and dumps js
     Then the page should record one jam event with js=[paste.dom,paste.event,paste.ui.heroscroll]
     And the output should equal that page's js dump verbatim
-    And the rendered include should compose no URL itself
+    And the rendered output should compose no URL itself
 
-  Scenario: CSSInclude in JAM mode delegates markup to the paste-assetgraph page
-    Given a CSSInclude view model with:
-      | property   | value                   |
-      | jamModules | site.theme,site.palette |
-      | jamMedia   | print                   |
+  Scenario: A css jam carries its media through the page dump
+    Given a Jam with css=[site.theme,site.palette] and media="print"
     And a fresh paste-assetgraph page object
-    When I render the CSS includes
+    When the layout records the jam and dumps css
     Then the page should record one jam event with css=[site.theme,site.palette] and media="print"
     And the output should equal that page's css dump verbatim
-    And the rendered include should compose no URL itself
+    And the rendered output should compose no URL itself
 
-  Scenario: JSInclude in JAM mode without a page object fails the render
-    Given a JSInclude view model with:
-      | property   | value                 |
-      | jamModules | paste.dom,paste.event |
+  Scenario: A non-empty jam without a page object fails the render
+    Given a Jam with js=[paste.dom,paste.event]
     And no paste-assetgraph page object
-    When I render the JS includes
+    When the layout records the jam
     Then the render should fail with an error naming the missing page
 
   Scenario: The root layout finishes the page and seals it
-    Given JAM-mode CSS and JS includes on a fresh paste-assetgraph page
+    Given a non-empty Jam and a fresh paste-assetgraph page object
     When I render the jambase layout with that page
     Then every jammed module reaches a dump of its type
     And the page reports finished once the layout's closing markup runs
 
-  Scenario: A jam stranded after its type's dump fails the layout's finish
-    Given a page that jammed css=[site.theme] with no css dump to follow
-    # a direct-mode CSSInclude emits no dump, so the jam stays queued
-    And a JAM-mode JSInclude on the same page
-    When I render the jambase layout with that page
-    Then the render fails at the layout's finish naming site.theme
+  Scenario: A jam whose type never reaches a dump fails the page's finish
+    Given a page that recorded css=[site.theme]
+    And only js was dumped on that page
+    When the page is finished
+    Then the finish fails naming site.theme
     And the page remains unfinished so the missing dump can still be added
 
-  Scenario: Include renderers never finish the page
-    Given JAM-mode includes rendered onto a fresh paste-assetgraph page
+  Scenario: Recording and dumping never finish the page
+    Given a non-empty Jam recorded and dumped on a fresh paste-assetgraph page
     Then the page remains unfinished
-    # includes are partial renderers — finish belongs to the root layout or
-    # a host helper calling page.finish() after the full render, which is
+    # record/dump are partial operations — finish belongs to the root layout
+    # or a host helper calling page.finish() after the full render, which is
     # idempotent against the layout's own finish
 
   Scenario: CSSInclude renders stylesheet link
