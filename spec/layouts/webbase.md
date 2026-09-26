@@ -115,5 +115,50 @@ val config = SurfaceConfig.load()
 
 // Use factories for ViewModels
 val pageMeta = PageMetaFactory.forHomePage(config.site)
-val jsIncludes = IncludesFactory.forPasteJam(config.assets)
+val cssIncludes = IncludesFactory.forCssJam(Seq("site.theme"))   // a Jam
+val jsIncludes = IncludesFactory.forDirectJS(Seq("/js/main.js"))
 ```
+
+The JAM factories return `Jam` — the page's jam event (module names only).
+Direct factories return `CSSInclude`/`JSInclude` — plain file tags.
+
+## Usage with JAM
+
+For JAM pages use the `jambase` layout instead: it carries the `Jam` and the
+per-render paste-assetgraph page object, records the jam once, and emits the
+CSS dump in `<head>` and the JS dump at the end of `<body>`:
+
+```scala
+@paste.surface.layouts.html.jambase(
+  pageMeta,
+  cssInclude = IncludesFactory.forDirectCSS(Seq("/css/main.css")),
+  jsInclude = JSInclude(),
+  page = Some(page),
+  jam = IncludesFactory.forPasteJam()
+) {
+  @* headContent *@
+} {
+  @* headerContent *@
+  <nav>...</nav>
+} {
+  @* mainContent *@
+  @mainContent
+} {
+  @* footerContent *@
+  <p>&copy; 2025</p>
+} {
+  @* footerScripts *@
+}
+```
+
+The app owns the paste-assetgraph `Paste` instance — created once, e.g.
+`val assetgraph = Paste.fromClasspath()` — and hands each render a fresh
+`assetgraph.page()`. The layout records the jam on it (`page.jam(...)`),
+emits `page.dump(AssetType.Css)` in the head and `page.dump(AssetType.Js)`
+at the end of the body, then finishes.
+
+`page.finish()` is the layout's last statement and renders nothing: the
+library verifies every jammed module was dumped — jams are queued per type,
+css per `media` — and a module still queued when finish runs fails the
+render naming it rather than shipping a page that lost the tag. A failed
+finish leaves the page open; repeated finishes return `""`.

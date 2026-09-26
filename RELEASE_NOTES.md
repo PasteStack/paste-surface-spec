@@ -1,3 +1,30 @@
+# paste-surface-spec v0.5.0
+
+**Date:** 2026-09-25
+
+## Changed
+
+- JAM rendering on includes (`spec/view_models/includes.md`): the layout
+  records the jam once with `JamIncludes.record(jam, page)` and dumps per
+  type — `JamIncludes.dump(AssetType.Css, page)` in `<head>` and
+  `JamIncludes.dump(AssetType.Js, page)` at the end of `<body>`. One scoped
+  dump emits `css`, `js` or `all`; `page.dump()` with no type renders the css
+  markup first, then the js.
+- Includes factories (`spec/view_model_factories/factories.md`) return `Jam`
+  values carrying the css and js module lists instead of include view models.
+- `CSSInclude` and `JSInclude` now describe plain `<link>`/`<script>` file
+  includes only; their JAM fields were removed.
+
+## Added
+
+- Page finish (`spec/view_models/includes.md`, `spec/layouts/webbase.md`):
+  root layouts end with `page.finish()`, which fails the render naming any
+  jammed module that never reached a dump of its type. Includes remain
+  partial renderers and must not finish; the call is idempotent so a
+  host-side finish after the layout is safe.
+- Hash-qualified asset URLs under the `jam.hash-urls` policy, and
+  caller-supplied JSON encoding for presenters (`spec/presenters`).
+
 # paste-surface-spec v0.4.0
 
 **Date:** 2026-09-24
