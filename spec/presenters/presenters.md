@@ -7,7 +7,7 @@ Presenters are **OPTIONAL**. They orchestrate complex pages and enable JSON/HTML
 | Scenario | Use Presenter? |
 |----------|----------------|
 | Simple static site | No — use ViewModels directly in templates |
-| Site with JSON API | Yes — `present()` for HTML, `presentAsJson()` for API |
+| Site with JSON API | Yes — `present()` for HTML, `presentAsJson(encoder)` for API |
 | AJAX partials | Yes — render the same view model as an [IO reply fragment](../rendering/rendering.md) |
 | Shared logic across routes | Yes — centralize in presenter |
 | Testable presentation | Yes — unit test presenters |
@@ -26,9 +26,13 @@ template.
 ```scala
 trait PagePresenter[T] {
   def present(): T
-  def presentAsJson(): String  // Override for proper JSON
+  def presentAsJson(encoder: ViewModelJson[T]): String
 }
 ```
+
+`presentAsJson` takes a `ViewModelJson[T]` encoder supplied by the host — the
+library does not choose a JSON serializer. The legacy no-arg
+`presentAsJson()` is deprecated and throws; migrate by passing an encoder.
 
 ## PageViewModel
 
@@ -38,7 +42,8 @@ Standard page data.
 case class PageViewModel(
   pageMeta: PageMeta,
   cssIncludes: CSSInclude,
-  jsIncludes: JSInclude
+  jsIncludes: JSInclude,
+  jam: Jam = Jam()
 )
 ```
 
@@ -52,7 +57,8 @@ case class HomePageViewModel(
   mainHero: Hero,
   sections: Seq[Hero],
   cssIncludes: CSSInclude,
-  jsIncludes: JSInclude
+  jsIncludes: JSInclude,
+  jam: Jam = Jam()
 )
 ```
 
@@ -71,7 +77,8 @@ class HomePagePresenter(
       mainHero = HeroFactory.forHomePage("main"),
       sections = Seq(HeroFactory.forSection("features")),
       cssIncludes = IncludesFactory.forDirectCSS(Seq("/css/main.css")),
-      jsIncludes = IncludesFactory.forPasteJam(assetConfig, customModules)
+      jsIncludes = JSInclude(),
+      jam = IncludesFactory.forPasteJam(customModules)
     )
   }
 }
@@ -86,9 +93,9 @@ def home() = {
   Ok(views.html.home(vm))
 }
 
-// JSON response
-def homeJson() = {
-  val json = new HomePagePresenter(config.site, config.assets).presentAsJson()
+// JSON response — the host supplies the encoder
+def homeJson(encoder: ViewModelJson[HomePageViewModel]) = {
+  val json = new HomePagePresenter(config.site, config.assets).presentAsJson(encoder)
   Ok(json).as("application/json")
 }
 ```

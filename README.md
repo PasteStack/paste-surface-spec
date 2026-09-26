@@ -25,7 +25,8 @@ This specification defines the contracts for rendering HTML templates using Past
 │   UI behaviors (JS + SCSS only, YUI-style modules)               │
 ├─────────────────────────────────────────────────────────────────┤
 │ Level 1: paste-assetgraph                                        │
-│   Asset pipeline (Rust binary, JAM URLs, manifest)               │
+│   Asset pipeline (Rust binary; renders JAM markup, owns URLs and │
+│   the manifest)                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -47,7 +48,7 @@ Route -> Presenter -> ViewModelFactory -> ViewModel -> Template
 
 - [Page](spec/view_models/page.md) — PageMeta (SEO, meta tags)
 - [Components](spec/view_models/components.md) — Hero, Address
-- [Includes](spec/view_models/includes.md) — CSS/JS asset injection with JAM
+- [Includes](spec/view_models/includes.md) — CSS/JS asset injection; JAM markup rendered by paste-assetgraph
 
 ### View Model Factories
 
@@ -81,7 +82,7 @@ spec/
 ├── view_models/
 │   ├── page.md           # PageMeta
 │   ├── components.md     # Hero, Address
-│   └── includes.md       # CSSInclude, JSInclude (JAM)
+│   └── includes.md       # CSSInclude, JSInclude (JAM via paste-assetgraph)
 ├── view_model_factories/
 │   └── factories.md      # PageMetaFactory, HeroFactory, IncludesFactory
 ├── presenters/

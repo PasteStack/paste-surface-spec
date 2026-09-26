@@ -17,7 +17,6 @@ paste.surface {
   }
   
   assets {
-    version = "2025.02.02"
     debug-mode = false
     debug-mode = ${?PASTE_DEBUG}  # Override via env var
   }
@@ -31,6 +30,10 @@ case class SurfaceConfig(
   site: SiteConfig,
   assets: AssetConfig
 )
+
+// Debug mode applies to direct includes only; JAM-mode markup is decided by
+// the paste-assetgraph build.
+case class AssetConfig(debugMode: Boolean = false)
 
 object SurfaceConfig {
   def load(): SurfaceConfig = {
@@ -50,7 +53,7 @@ val config = SurfaceConfig.load()
 
 // Use throughout app
 val pageMeta = PageMetaFactory.forHomePage(config.site)
-val jsIncludes = IncludesFactory.forPasteJam(config.assets)
+val jam = IncludesFactory.forPasteJam()
 ```
 
 ## Environment Variables
