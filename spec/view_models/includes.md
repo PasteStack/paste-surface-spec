@@ -134,6 +134,17 @@ page.jam(js = jsInclude.jamModules, inline = jsInclude.jamInline, sync = jsInclu
 val scriptIncludes = page.dumpJs()
 ```
 
+An include is a partial renderer: it MUST NOT finish the page. Finish belongs
+to the root layout — `paste.surface` layouts call `page.finish()` after the
+JS include, before `</body>` — which makes the library verify every jammed
+module reached a dump of its type. Jams are queued per type (and css is
+tracked per `media`), so a css jam that lands below the head's css dump
+fails the render at finish naming the module instead of silently dropping
+its tag: completion detects the omission, it cannot move the tag back into
+`<head>` — css bound for `<head>` has to be jammed before that dump. Custom
+root layouts MUST call `page.finish()` the same way; the call is idempotent,
+so a host-side finish after the layout adds nothing.
+
 ### HTML Output
 
 **Direct mode** (individual files):

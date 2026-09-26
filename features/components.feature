@@ -167,6 +167,27 @@ Feature: Surface Component Rendering
     When I render the JS includes
     Then the render should fail with an error naming the missing page
 
+  Scenario: The root layout finishes the page and seals it
+    Given JAM-mode CSS and JS includes on a fresh paste-assetgraph page
+    When I render the jambase layout with that page
+    Then every jammed module reaches a dump of its type
+    And the page reports finished once the layout's closing markup runs
+
+  Scenario: A jam stranded after its type's dump fails the layout's finish
+    Given a page that jammed css=[site.theme] with no css dump to follow
+    # a direct-mode CSSInclude emits no dump, so the jam stays queued
+    And a JAM-mode JSInclude on the same page
+    When I render the jambase layout with that page
+    Then the render fails at the layout's finish naming site.theme
+    And the page remains unfinished so the missing dump can still be added
+
+  Scenario: Include renderers never finish the page
+    Given JAM-mode includes rendered onto a fresh paste-assetgraph page
+    Then the page remains unfinished
+    # includes are partial renderers — finish belongs to the root layout or
+    # a host helper calling page.finish() after the full render, which is
+    # idempotent against the layout's own finish
+
   Scenario: CSSInclude renders stylesheet link
     Given a CSSInclude view model with:
       | property      | value                               |

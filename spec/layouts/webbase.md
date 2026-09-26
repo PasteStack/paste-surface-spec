@@ -133,4 +133,13 @@ markup from it:
 
 @* scriptIncludes — records the js jam event, emits page.dumpJs() *@
 @paste.surface.includes.html.js(jsIncludes, Some(page))
+
+@* end of the page — validates every jam reached a dump, seals the page *@
+@page.finish()
 ```
+
+`page.finish()` is the layout's last statement and renders nothing: the
+library verifies every jammed module was dumped — jams are queued per type,
+css per `media` — and a module still queued (a css jam below the head's css
+dump) fails the render naming it rather than shipping a page that lost the
+tag. A failed finish leaves the page open; repeated finishes return `""`.
