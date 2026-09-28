@@ -1,3 +1,19 @@
+# paste-surface-spec v0.6.0
+
+**Date:** 2026-09-28
+
+## Added
+
+- Site documents contract (`spec/documents/site-documents.md`): a paste site
+  renders `/robots.txt` and `/sitemap.xml` from a declared `SiteDocuments`
+  model — canonical origin, indexable page inventory, and crawl-disallowed
+  prefixes — instead of shipping static files that drift from the routes or
+  hardcode a host. The spec pins the endpoint and content-type contract,
+  the construction-time model invariants (absolute http(s) origin,
+  slash-prefixed paths, no indexable path under a disallow prefix per RFC
+  9309 literal-prefix matching), the derived `Sitemap:` line, no `lastmod`
+  without honest dates, and the `/privacy` and `/terms` page convention.
+
 # paste-surface-spec v0.5.0
 
 **Date:** 2026-09-25
