@@ -1,3 +1,28 @@
+# paste-surface-spec v0.7.0
+
+**Date:** 2026-09-30
+
+## Added
+
+- Reduced-motion poster fallback (`spec/view_models/components.md`,
+  `features/components.feature`): a sequence model without responsive
+  poster candidates still emits a reduced-motion source carrying the
+  final poster ahead of the fallback image, so a no-motion reader gets
+  the settled frame rather than the first.
+
+## Changed
+
+- Form replay contract (`spec/components/formfield/form.md`): the
+  idempotency-key outcomes a page must distinguish are spelled out — a
+  stored reply replays, a claimed key with no reply yet is still in
+  flight, and an abandoned claim retries cleanly.
+
+## Fixed
+
+- Robots.txt matching rules (`spec/documents/site-documents.md`): path
+  overlap is judged on percent-decoded literals, and a whole-site
+  disallow carries no `Allow:` line.
+
 # paste-surface-spec v0.6.0
 
 **Date:** 2026-09-28
