@@ -62,6 +62,18 @@ Feature: Surface Component Rendering
     And the root should have data-sequence-scroll-window-start="0.3"
     And the root should have data-sequence-scroll-window-end="0.65"
 
+  Scenario: ImageSequence emits an explicit playhead preload mode
+    Given an ImageSequence view model with:
+      | property     | value                     |
+      | source       | /sequences/hero           |
+      | posterFirst  | /sequences/hero/first.jpg |
+      | posterFinal  | /sequences/hero/final.jpg |
+      | posterWidth  | 1920                      |
+      | posterHeight | 1080                      |
+      | preload      | playhead                  |
+    When I render the ImageSequence component
+    Then the root should have data-sequence-preload="playhead"
+
   Scenario: ImageSequence attributes are optional for hand-authored markup
     Given a plain HTML element carrying data-paste-candidate-imagesequence, a poster, and a source
     And no data-sequence-fit, data-sequence-scroll-window-start, or data-sequence-scroll-window-end attributes
@@ -75,6 +87,17 @@ Feature: Surface Component Rendering
     Then the webp srcset descriptors should ascend by width
     And a reduced-motion source should offer the final frames
     And a non-webp source should appear only for candidates that supply fallbacks
+
+  Scenario: ImageSequence serves the final poster under reduced motion without candidates
+    Given an ImageSequence view model with:
+      | property     | value                     |
+      | source       | /sequences/hero           |
+      | posterFirst  | /sequences/hero/first.jpg |
+      | posterFinal  | /sequences/hero/final.jpg |
+      | posterWidth  | 1920                      |
+      | posterHeight | 1080                      |
+    When I render the ImageSequence component
+    Then the picture should carry a reduced-motion source for /sequences/hero/final.jpg ahead of the img
 
   Scenario: ImageSequence omits configuration the caller did not supply
     Given an ImageSequence view model with no intro and no scroll endpoints
@@ -601,17 +624,22 @@ Feature: Surface Component Rendering
     Then the submit event should not be prevented
     And no request should be sent
 
-  Scenario: paste.ui.form resubmits natively on non-HTML or network failure
+  Scenario: paste.ui.form resubmits natively after transmission only when replay is declared safe
     Given a form[data-paste-form] inside an IO reply fragment target
     When the background request returns a non-HTML response or fails at the network level
-    Then the form should be resubmitted natively with the same submitter
+    Then the request should announce exactly one paste.ui.form:failed event carrying its reason
+    And an unmarked post form should not be resubmitted — a role="alert" failure notice appears in the form instead
+    But a form carrying data-paste-form-idempotent, or a get submission, should be resubmitted natively with the same submitter
     And the re-fired submit should not be intercepted
+    And a listener that cancels the failure event suppresses both the resubmit and the default notice
 
   Scenario: paste.ui.form never places a response that left the page's origin
     Given a form[data-paste-form] inside an IO reply fragment target
     When the background request is redirected to a different origin and returns text/html
-    Then the target content should be unchanged
-    And the form should be resubmitted natively with the same submitter
+    Then the response markup is never placed in the target
+    And the original form and its controls remain
+    And the form should announce a paste.ui.form:failed event with reason "response"
+    And an unmarked post form should not be resubmitted — a role="alert" failure notice appears inside it
 
   Scenario: paste.ui.form ignores submits while a request is in flight
     Given a form[data-paste-form] inside an IO reply fragment target with a request in flight

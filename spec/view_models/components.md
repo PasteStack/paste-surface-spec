@@ -68,7 +68,7 @@ component: no blank box, no layout shift.
 | `posterHeight` | int | yes | - | Intrinsic poster height, positive |
 | `progressTargetId` | string | no | `None` | Plain element id whose scroll progress drives the sequence; no `#`, no whitespace. Defaults to the hero's name when nested in a Hero |
 | `range` | string | no | `"top-exit"` | `top-exit` or `enter-exit`: which part of the target's travel maps to the sequence |
-| `preload` | string | no | `"auto"` | `auto` or `all` |
+| `preload` | string | no | `"auto"` | `auto`, `all`, or `playhead`: `all` paces every frame through the loaders; `playhead` keeps background work inside a window that follows the desired frame, widened by observed transfer rate within the preload budget; `auto` prefetches nothing beyond the buffer horizon |
 | `priority` | int | no | `0` | Nonnegative load-priority offset. Bindings share one fetch queue, so this orders competing sequences on a page; a root's own desired frame still outranks its own prefetch |
 | `cssClass` | string | no | `""` | Additional CSS classes on the root |
 | `intro` | [ImageSequenceIntro](#viewmodel-imagesequenceintro) | no | `None` | Play an intro before scroll takes over |
@@ -150,6 +150,10 @@ through `copy`.
 - Poster candidates are emitted in ascending width regardless of the order they
   were supplied. Non-WebP `<source>` elements appear only when a candidate
   supplies them.
+- With no `posterSources` the poster still serves reduced motion: a
+  `<source media="(prefers-reduced-motion: reduce)">` carrying `posterFinal`
+  precedes the fallback `<img>`, which keeps `posterFirst`. The plain poster
+  URLs are format-agnostic, so that source carries no `type`.
 - The poster `<img>` carries an empty `alt`: the sequence is presentational, and
   the surrounding hero content carries the meaning.
 - The renderer emits no inline script, no runtime state, and no frame URLs; frame

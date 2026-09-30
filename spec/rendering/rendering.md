@@ -55,8 +55,9 @@ model, so all three renderings show the same outcome.
   request headers intact, so the redirect target renders its own IO reply
   fragment. The `paste.ui.form` Element places that response like any other
   when the redirect stays on the page's origin; a redirect off the page's
-  origin, a non-HTML response, or a network failure makes it resubmit
-  natively.
+  origin is a response it cannot place, so it takes the failure path —
+  `paste.ui.form:failed` and the gated replay rule — like any other failure
+  after transmission.
 
 ## Framework bindings
 
