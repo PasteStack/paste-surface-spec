@@ -85,18 +85,42 @@ On submit it:
    (URL-encoded body, multipart body, or for `get` a query string that replaces
    any query already in the `action`).
 4. Ignores further submits of the same form while the request is in flight, and
-   marks the target `aria-busy="true"` for its duration.
+   marks the target `aria-busy="true"` for its duration. The request carries a
+   deadline — `data-paste-form-timeout` in decimal milliseconds on the form,
+   default 30,000: positive integers through 4294967295 are honored, the
+   literal `0` opts out, and malformed, fractional, blank or overflowing
+   input falls back to the default rather than disabling the deadline
+   silently — so a stalled request cannot hold the busy state forever.
 5. On an HTML response of any status whose final URL, after any redirect, is
    on the page's origin, replaces the target's content with the response body,
    initializes forms inside it, and moves focus to the first `[role="alert"]`
    or `[role="status"]` in the new content when one exists.
-6. On a network failure, a non-HTML response, or a response whose final URL
-   left the page's origin, submits the form natively, so the server's
-   full-page rendering reports the outcome.
+6. On any failure after transmission — a network error, timeout, or abort,
+   or a completed response the form cannot place (a non-HTML reply, or an HTML
+   reply whose final URL left the page's origin) — clears the busy state, then
+   fires `paste.ui.form:failed`, a bubbling, cancelable event whose
+   `detail.reason` is `"error"`, `"timeout"`, `"abort"`, or `"response"`. Then
+   exactly one of:
+   - a listener called `preventDefault()` → the listener owns the failure UX;
+     nothing else happens;
+   - the method is `get`, or the form carries `data-paste-form-idempotent` →
+     the form resubmits natively, reproducing the browser's own submission;
+   - otherwise → a `role="alert"` notice (`paste-ui-form-failure`) is appended
+     inside the form, focused, and says the submission may have been received —
+     an honest outcome for a POST whose delivery is uncertain.
+7. Only when the request could not be transmitted at all — `paste.io` returned
+   no request — does the module submit natively unconditionally; nothing was
+   sent, so nothing can be duplicated.
 
-A native resubmission after a network failure can repeat a request the server
-already processed. Forms whose action is not idempotent carry an idempotency key
-the server honours.
+A resubmission after transmission can repeat a request the server already
+processed, which is why it is gated rather than automatic. `data-paste-form-idempotent`
+is the site's declaration that the endpoint collapses replays itself — an
+idempotency key, a natural dedup, or a safe operation; the attribute alone does
+not make a replay safe. The default failure notice is honest about the
+uncertainty and preserves all entered values and server-rendered messages; a
+listener that prevents the event takes responsibility for the visible outcome.
+A module-created notice replaces only itself and is cleared when the next
+submission is accepted for transmission.
 
 ---
 
