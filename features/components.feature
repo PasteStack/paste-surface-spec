@@ -229,6 +229,16 @@ Feature: Surface Component Rendering
     And the HTML should contain a[href="#why-choose-us"] with text "Why Us"
     And the HTML should contain a[href="#contact"] with text "Contact"
 
+  Scenario: SectionNav item href overrides the generated fragment link
+    Given a SectionNav view model with:
+      | property | value |
+      | sticky   | false |
+    And nav items:
+      | label    | targetId | href       |
+      | Approach | approach | /#approach |
+    When I render the SectionNav component
+    Then the HTML should contain a[href="/#approach"] with text "Approach"
+
   Scenario: SectionNav without sticky does not emit data attribute
     Given a SectionNav view model with:
       | property | value |
