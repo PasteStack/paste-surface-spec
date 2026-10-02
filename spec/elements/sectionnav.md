@@ -95,3 +95,9 @@ When sticky is active, `paste.ui.stickynav` also adds:
   )
 ))
 ```
+
+`NavItem` also accepts an optional `href`, emitted verbatim instead of
+`#` + `targetId` — for example `NavItem("About", "about", href = Some("/#about"))`
+when the nav is rendered on a page that does not contain the target sections.
+Such links are outside `paste.ui.smoothscroll`'s `a[href^="#"]` interception and
+`paste.ui.scrollspy`'s item selection, so they navigate as ordinary links.

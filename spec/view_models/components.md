@@ -302,6 +302,7 @@ In-page navigation bar with anchor links to page sections. Integrates with `past
 | `label` | string | yes | - | Display text |
 | `targetId` | string | yes | - | Target section element ID (without `#`) |
 | `cssClass` | string | no | `""` | Additional CSS class on the `<li>` |
+| `href` | string | no | - | Link emitted verbatim in place of `#` + `targetId`. Use for navs rendered on pages that do not contain the target sections — e.g. `/#approach` links to the section on the home page. |
 
 ### ViewModel: SectionNav
 
@@ -324,7 +325,8 @@ names.
 case class NavItem(
   label: String,
   targetId: String,
-  cssClass: String = ""
+  cssClass: String = "",
+  href: Option[String] = None
 )
 
 case class SectionNav(
@@ -347,7 +349,7 @@ case class SectionNav(
      data-spy-min-width="{scrollspyMinWidth}">
   <ul class="paste-ui-section-nav-items">
     <li class="paste-ui-section-nav-item {item.cssClass}">
-      <a href="#{item.targetId}">{item.label}</a>
+      <a href="{item.href, or # + item.targetId when href is unset}">{item.label}</a>
     </li>
   </ul>
 </nav>
