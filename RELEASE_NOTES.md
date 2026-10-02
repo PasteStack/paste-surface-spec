@@ -1,3 +1,33 @@
+# paste-surface-spec v0.8.0
+
+**Date:** 2026-10-01
+
+## Added
+
+- `NavItem.href` (`spec/view_models/components.md`,
+  `spec/elements/sectionnav.md`, `features/components.feature`): an
+  optional link emitted verbatim in place of the generated
+  `#` + `targetId` fragment. SectionNav remains an in-page anchor nav;
+  `href` covers navs rendered on pages that do not contain the target
+  sections, where fragment-only links resolve as dead anchors. Verbatim
+  links are outside `a[href^="#"]` interception, so smoothscroll and
+  scrollspy leave them to ordinary navigation.
+
+# paste-surface-spec v0.8.0
+
+**Date:** 2026-10-01
+
+## Added
+
+- `NavItem.href` (`spec/view_models/components.md`,
+  `spec/elements/sectionnav.md`, `features/components.feature`): an
+  optional link emitted verbatim in place of the generated
+  `#` + `targetId` fragment. SectionNav remains an in-page anchor nav;
+  `href` covers navs rendered on pages that do not contain the target
+  sections, where fragment-only links resolve as dead anchors. Verbatim
+  links are outside `a[href^="#"]` interception, so smoothscroll and
+  scrollspy leave them to ordinary navigation.
+
 # paste-surface-spec v0.7.0
 
 **Date:** 2026-09-30
