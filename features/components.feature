@@ -12,125 +12,148 @@ Feature: Surface Component Rendering
       | stickyNavTarget | true  |
     When I render the Hero component
     Then the HTML should contain element with class="paste-ui-hero"
-    And the HTML should contain id="hero-main"
+    And the HTML should contain id="main"
     And the HTML should contain data-paste-hero="main"
     And the HTML should contain data-paste-parallax="true"
     And the HTML should contain data-paste-sticky-target="true"
 
-  Scenario: Hero with an image sequence hands its media to the Element
+  Scenario: Hero with an image sequence keeps its image host and hands it to the Element
     Given a Hero view model named "main" with an ImageSequence
     When I render the Hero component
-    Then the HTML should contain data-paste-candidate-imagesequence
-    And the HTML should contain id="main-image"
-    And the HTML should contain data-sequence-progress-id="main"
+    Then the hero section should carry data-paste-scrollscrub with the declared scrub geometry
+    And the image element should keep id="main-image" and class="paste-ui-hero-image"
+    And the image element should carry data-paste-imagesequence="#main-image-catalog"
+    And the section should carry class "paste-ui-hero-with-image" even without showImage
+    And the HTML should contain script#main-image-catalog with type="application/json"
     And the HTML should not contain data-paste-parallax
-    And the HTML should not contain class="paste-ui-hero-image"
+    And the HTML should not contain a paste-ui-imagesequence-scope wrapper or a *-host id
 
-  Scenario: ImageSequence renders a readable poster and the Element's configuration
-    Given an ImageSequence view model with:
-      | property     | value                     |
-      | source       | /sequences/hero           |
-      | posterFirst  | /sequences/hero/first.jpg |
-      | posterFinal  | /sequences/hero/final.jpg |
-      | posterWidth  | 1920                      |
-      | posterHeight | 1080                      |
-      | range        | enter-exit                |
-    When I render the ImageSequence component
-    Then the root should have the boolean data-paste-candidate-imagesequence attribute
-    And the root should have data-sequence-source="/sequences/hero"
-    And the root should have data-sequence-range="enter-exit"
-    And the root should have data-sequence-preload="auto"
-    And the root should have data-sequence-fit="cover"
-    And the root should have data-sequence-scroll-window-start="0.0"
-    And the root should have data-sequence-scroll-window-end="1.0"
-    And the picture should carry an img with width="1920" height="1080" and an empty alt
-    And the renderer should not emit frame URLs, inline scripts, or runtime state
+  Scenario: ImageSequence renders the declarative wrapper and catalog
+    Given an ImageSequence view model with a two-frame catalog
+    When I render the ImageSequence component with media id "scene"
+    Then the scope should have class="paste-ui-imagesequence-scope" and the boolean data-paste-scrollscrub attribute
+    And the scope should carry data-scrub-start="top top" and data-scrub-end="bottom top"
+    And the host should have class="paste-ui-imagesequence" and data-paste-imagesequence="#scene-catalog"
+    And the host should have data-paste-progressiveresolution and aria-hidden="true"
+    And the document should contain a script#scene-catalog with type="application/json" carrying the frames
+    And the renderer should not emit runtime state, a poster element, or a skip control
 
-  Scenario: ImageSequence renders a supplied fit and scroll window
-    Given an ImageSequence view model with:
-      | property          | value                     |
-      | source            | /sequences/hero           |
-      | posterFirst       | /sequences/hero/first.jpg |
-      | posterFinal       | /sequences/hero/final.jpg |
-      | posterWidth       | 1920                      |
-      | posterHeight      | 1080                      |
-      | fit               | contain                   |
-      | scrollWindowStart | 0.3                       |
-      | scrollWindowEnd   | 0.65                      |
-    When I render the ImageSequence component
-    Then the root should have data-sequence-fit="contain"
-    And the root should have data-sequence-scroll-window-start="0.3"
-    And the root should have data-sequence-scroll-window-end="0.65"
+  Scenario: ImageSequence emits declared scrub geometry only
+    Given an ImageSequence view model whose scrub declares a subject, a window, and container mode is not declared
+    When I render the ImageSequence component with media id "scene"
+    Then the scope should carry the declared data-scrub-subject and data-scrub-window
+    And the scope should not carry data-scrub-mode or data-scrub-root
 
-  Scenario: ImageSequence emits an explicit playhead preload mode
-    Given an ImageSequence view model with:
-      | property     | value                     |
-      | source       | /sequences/hero           |
-      | posterFirst  | /sequences/hero/first.jpg |
-      | posterFinal  | /sequences/hero/final.jpg |
-      | posterWidth  | 1920                      |
-      | posterHeight | 1080                      |
-      | preload      | playhead                  |
-    When I render the ImageSequence component
-    Then the root should have data-sequence-preload="playhead"
+  Scenario: ImageSequence in container mode emits only the applicable attributes
+    Given an ImageSequence view model whose scrub declares container mode, a root, a subject, and a window
+    When I render the ImageSequence component with media id "scene"
+    Then the scope should carry data-scrub-mode="container", data-scrub-root, and data-scrub-window
+    And the scope should not carry data-scrub-subject, data-scrub-start, or data-scrub-end
 
-  Scenario: ImageSequence attributes are optional for hand-authored markup
-    Given a plain HTML element carrying data-paste-candidate-imagesequence, a poster, and a source
-    And no data-sequence-fit, data-sequence-scroll-window-start, or data-sequence-scroll-window-end attributes
-    When the Element initializes it
-    Then it plays with fit "cover" across the scroll window 0 to 1
-    And the rendered defaults match what the view model emits unset
+  Scenario: ImageSequence emits declared endpoints, buffer, and intro
+    Given an ImageSequence view model with from, to, a scrub buffer, and an intro
+    When I render the ImageSequence component with media id "scene"
+    Then the host should carry data-sequence-from, data-sequence-to, and data-sequence-scrub-buffer-frames
+    And the host should carry data-sequence-intro-duration-ms and data-sequence-intro-skip="#scene-skip"
+    And the document should contain a hidden button#scene-skip with class="paste-ui-imagesequence-skip"
+    And button#scene-skip should be the scope's first child, ahead of the host
 
-  Scenario: ImageSequence poster candidates are emitted in ascending width
-    Given an ImageSequence view model with poster candidates supplied out of order
-    When I render the ImageSequence component
-    Then the webp srcset descriptors should ascend by width
-    And a reduced-motion source should offer the final frames
-    And a non-webp source should appear only for candidates that supply fallbacks
+  Scenario: A hero intro's skip control is the hero's first tab stop
+    Given a Hero view model named "main" with an ImageSequence that declares an intro
+    When I render the Hero component
+    Then a hidden button#main-image-skip should be the section's first child
+    And it should precede the image element and the content wrap
 
-  Scenario: ImageSequence serves the final poster under reduced motion without candidates
-    Given an ImageSequence view model with:
-      | property     | value                     |
-      | source       | /sequences/hero           |
-      | posterFirst  | /sequences/hero/first.jpg |
-      | posterFinal  | /sequences/hero/final.jpg |
-      | posterWidth  | 1920                      |
-      | posterHeight | 1080                      |
-    When I render the ImageSequence component
-    Then the picture should carry a reduced-motion source for /sequences/hero/final.jpg ahead of the img
+  Scenario: An intro without a skip renders no skip control
+    Given an ImageSequence view model with an intro whose skip is false
+    When I render the ImageSequence component with media id "scene"
+    Then the host should carry data-sequence-intro-trigger="ready" and data-sequence-intro-duration-ms
+    And the host should have no data-sequence-intro-skip attribute
+    And no skip control and no element id "scene-skip" should be rendered
+    And the same intro in a Hero named "main" should render no button#main-image-skip
+
+  Scenario: An intro declares its skip by default
+    Given an ImageSequence view model with an intro that does not set skip
+    When I render the ImageSequence component with media id "scene"
+    Then the host should carry data-sequence-intro-skip="#scene-skip"
+    And the document should contain a hidden button#scene-skip labelled "Skip intro"
 
   Scenario: ImageSequence omits configuration the caller did not supply
-    Given an ImageSequence view model with no intro and no scroll endpoints
-    When I render the ImageSequence component
-    Then the root should have no data-sequence-scroll-from attribute
-    And the root should have no data-sequence-scroll-to attribute
-    And the root should have no data-sequence-intro-mode attribute
+    Given an ImageSequence view model with no intro, no endpoints, and no buffer
+    When I render the ImageSequence component with media id "scene"
+    Then the host should have no data-sequence-from or data-sequence-to attribute
+    And the host should have no data-sequence-intro-* attribute
     And no skip control should be rendered
+
+  Scenario: ImageSequence catalogs serialize inert and HTML-safe
+    Given a catalog frame whose upgrade rungs were supplied unordered
+    When I render the ImageSequence component
+    Then the catalog JSON should list upgrades ascending in intrinsic width
+    And a src containing "</script>" should appear as unicode escapes inside the data block
+
+  Scenario: An adaptive tiered manifest normalizes into a catalog
+    Given a version-1 manifest with two frames across two tiers
+    When the adaptive adapter converts it with an identity resolver
+    Then the catalog frame bases are the narrowest tier
+    And each frame's upgrades are the wider tier in ascending order
+    And producer metadata outside frames is not carried into the catalog
+
+  Scenario: ImageSequence resolution opt-out omits the policy marker
+    Given an ImageSequence view model with resolution false
+    When I render the ImageSequence component
+    Then the host should have no data-paste-progressiveresolution attribute
+
+  Scenario: ProgressiveImage renders a standalone progressively resolved img
+    Given a ProgressiveImage view model with a 640x360 base and one 1280x720 upgrade
+    When I render the ProgressiveImage component
+    Then the img should carry src, width="640", height="360", and the authored alt as its baseline
+    And the img should have data-paste-progressiveresolution and data-image-sources="#still-sources"
+    And the document should contain script#still-sources with type="application/json" carrying the base and its rungs
+    And a src containing "</script>" should appear as unicode escapes inside the data block
+    And no data-sequence-* or data-scrub-* attributes should be emitted
+
+  Scenario: ImageSequence attributes are optional for hand-authored markup
+    Given a plain HTML host carrying data-paste-imagesequence and a catalog inside a data-paste-scrollscrub scope
+    And no other data-sequence-* attributes
+    When the Element initializes it
+    Then it plays the whole catalog across the declared scroll range
+    And the authored baseline stays painted until a real frame is ready
 
   Scenario Outline: ImageSequence rejects invalid model configuration
     Given otherwise valid ImageSequence configuration
-    When I construct an ImageSequence with <property> set to <value>
+    When I construct the model with <property> set to <value>
     Then construction should fail with an IllegalArgumentException
     And no component HTML should be rendered
 
     Examples:
-      | property         | value                    |
-      | source           | an empty string          |
-      | posterFirst      | whitespace only          |
-      | posterWidth      | 0                        |
-      | posterHeight     | -1                       |
-      | range            | an unknown range         |
-      | preload          | an unknown preload       |
-      | priority         | -1                       |
-      | progressTargetId | an id containing "#"     |
-      | progressTargetId | an id containing a space |
-      | scrollFrom       | supplied without scrollTo |
-      | fit              | an unknown fit           |
-      | scrollWindowStart | a fraction below 0      |
-      | scrollWindowEnd  | a fraction above 1       |
-      | scrollWindowEnd  | not exceeding scrollWindowStart |
-      | posterSources    | repeated widths          |
-      | posterSources    | mismatched aspect ratios |
+      | property          | value                                  |
+      | catalog           | an empty frame list                    |
+      | frame.src         | an empty string                        |
+      | frame.width       | 0                                      |
+      | frame.upgrades    | a rung at or under the base width      |
+      | frame.upgrades    | repeated rung widths                   |
+      | frame.upgrades    | a rung with a mismatched aspect        |
+      | scrub.start       | a one-edge anchor                      |
+      | scrub.start       | an unknown edge token                  |
+      | scrub.window      | a start without an end                 |
+      | scrub.windowStart | a fraction below 0                     |
+      | scrub.windowEnd   | a fraction above 1                     |
+      | scrub.windowEnd   | not exceeding scrub.windowStart        |
+      | scrub.mode        | null                                   |
+      | scrub.mode        | a null mode inside Some                |
+      | scrub.subject     | whitespace only                        |
+      | scrub.subject     | null                                   |
+      | from              | an index beyond the catalog            |
+      | to                | a negative index                       |
+      | catalog           | one source at two intrinsic sizes      |
+      | intro.to          | an index beyond the catalog            |
+      | intro.durationMs  | zero — None is the no-intro state      |
+      | intro.durationMs  | a negative duration                    |
+      | intro.easing      | null                                   |
+      | intro             | null                                   |
+      | intro.skipLabel   | whitespace only                        |
+      | intro.skipLabel   | null, with or without a skip           |
+      | scrubBufferFrames | a negative count                       |
 
   Scenario: Address component renders with schema.org markup
     Given an Address view model with:
@@ -424,17 +447,12 @@ Feature: Surface Component Rendering
     Then each root should have data-paste-marquee-state="static"
     And each toggle should be hidden and disabled
     When the preference changes back
-    Then each controller should reevaluate whether motion is eligible
+    Then each binding should reevaluate whether motion is eligible
 
-  Scenario: Marquee initialization, refresh, and disposal preserve ownership
+  Scenario: Marquee binding preserves ownership across item changes
     Given equivalent plain HTML and Surface-rendered marquees with unrelated attributes and style properties
-    When I call init twice for each root
-    Then repeated initialization should return the same controller for that root
-    When I change each list's item collection and call refresh
-    Then each controller should reevaluate eligibility and item spacing without requiring mutation observation
-    When I call dispose on each controller
-    Then the Element's observers and listeners should be removed
-    And attributes and style properties owned by the Element should be restored
+    When I change each list's item collection
+    Then each binding should reevaluate eligibility and item spacing through its own observers
     And original nodes and their order should remain intact
     And unrelated attributes and style properties should remain unchanged
 
