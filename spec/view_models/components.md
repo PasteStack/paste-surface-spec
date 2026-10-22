@@ -18,7 +18,7 @@ Hero section with optional parallax and sticky nav targeting.
 ### Example (Scala)
 
 ```scala
-case class Hero(
+final case class Hero(
   name: String,
   noContent: Boolean = false,
   showImage: Boolean = false,
@@ -28,161 +28,413 @@ case class Hero(
 )
 ```
 
-An image sequence replaces the hero's media: the parallax attribute and the
-legacy `<i>` image element are both omitted, because the sequence owns the pixels
-and reads scroll position itself. The sequence's media element id is
-`{name}-image`, and its progress target defaults to the hero's own `name`.
+Construction rejects an empty `name` or one carrying whitespace or a leading
+`#` — the name becomes the section id, a fragment target resolved by exact id.
+A hero carrying an `imageSequence` derives a `#{name}-image-catalog` selector
+(and `#{name}-image-skip` with an intro skip), so its `name` must also be a
+plain identifier (see the generated-selector rule
+below). A null `imageSequence` option or a null sequence inside it is likewise
+rejected at construction. Releases up to 0.8.0 validated no hero name and
+`Hero` was not `final`; both are construction-time changes for existing
+callers.
+
+The ids a hero derives are reserved on the page: `{name}`,
+`{name}-content-wrap` and `{name}-content`, `{name}-image` with an image or a
+sequence, `{name}-image-catalog` with a sequence, and `{name}-image-skip`
+with an intro that declares a skip. Surface validates their syntax, not their uniqueness.
+
+An image sequence enhances the hero's existing media without replacing its
+identity: the `<section>` itself carries the scrub declaration, and the
+established `<i id="{name}-image" class="paste-ui-hero-image">` element stays
+the image host and gains the sequence attributes; the sequence's `cssClass`
+joins the section's classes, since the section is the scope root. The catalog
+follows the host as its sibling; no wrapper claims the media id and no second
+image layer competes for the pixels. With an intro that declares a skip, the
+skip control is the section's first child, ahead of the host and the content: the hero's first
+tab stop, so focus the skip hands to the section continues into the content
+instead of crossing it twice. The control is in the hero's normal flow until
+the page positions it (Surface ships no CSS); without that rule a revealed
+skip pushes the content down by its own height until the intro ends.
+`paste-ui-hero-with-image` reflects declared media — `showImage` or an image sequence — and the parallax
+attribute is omitted while a sequence reads scroll position itself. The host
+declares `data-hero-image-fixed` so the parallax writer, which discovers the
+image by class rather than by that attribute, leaves the sequence's frame
+presentation alone. Under `disableParallax` the host keeps the
+`paste-ui-hero-basicimage` class heroscroll never discovers, so no hero effect
+runs over the sequence and `data-hero-image-fixed` is not emitted. The sequence's scrub subject defaults to the section
+(the scope); a declared `scrub.subject` still wins.
 
 ### HTML Output
 
+An ordinary hero:
+
 ```html
-<section class="paste-ui-hero" 
-         id="hero-{name}"
+<section class="paste-ui-hero paste-ui-hero-with-image sticky-nav-target"
+         id="{name}"
          data-paste-hero="{name}"
-         data-paste-parallax="{!disableParallax}"
-         data-paste-sticky-target="{stickyNavTarget}">
-  <div class="paste-ui-hero-content">
-    <!-- content slot -->
+         data-paste-parallax="true"
+         data-paste-sticky-target="true">
+  <i id="{name}-image" class="paste-ui-hero-image"></i>
+  <div id="{name}-content-wrap" class="paste-ui-hero-content-wrap">
+    <div id="{name}-content" class="paste-ui-hero-content">
+      <!-- content slot -->
+    </div>
   </div>
 </section>
 ```
+
+A sequenced hero (`imageSequence = Some(...)`):
+
+```html
+<section class="paste-ui-hero paste-ui-hero-with-image"
+         id="{name}"
+         data-paste-hero="{name}"
+         data-paste-scrollscrub
+         data-scrub-start="top top"
+         data-scrub-end="bottom top">
+  <!-- only with an intro whose skip is true: -->
+  <button type="button" id="{name}-image-skip" class="paste-ui-imagesequence-skip" hidden>{intro.skipLabel}</button>
+  <i id="{name}-image" class="paste-ui-hero-image"
+     data-paste-imagesequence="#{name}-image-catalog"
+     data-paste-progressiveresolution
+     data-hero-image-fixed
+     aria-hidden="true"></i>
+  <script id="{name}-image-catalog" type="application/json">{catalog}</script>
+  <div id="{name}-content-wrap" class="paste-ui-hero-content-wrap">
+    <div id="{name}-content" class="paste-ui-hero-content">
+      <!-- content slot -->
+    </div>
+  </div>
+</section>
+```
+
+`data-paste-parallax` and `data-paste-sticky-target` are presence/absence
+attributes — emitted only when their conditions hold, never with a `false`
+value. The same holds for `data-hero-image-fixed` on a sequenced hero:
+heroscroll discovers the image element by its `paste-ui-hero-image` class,
+not by the parallax attribute, so omitting `data-paste-parallax` alone does
+not keep the parallax writer off the sequence's frame presentation — the
+established fixed opt-out does.
 
 ---
 
 ## ImageSequence
 
-Scroll-driven pre-rendered image sequence. Surface emits a poster that is
-readable on its own plus the configuration the Element needs; the Element owns
-frame decoding, canvas pixels and scroll subscription. Without JavaScript, with
-reduced motion, or before the Element initializes, the `<picture>` poster is the
-component: no blank box, no layout shift.
+Scroll-driven pre-rendered image sequence, declared to the `paste.ui.imagesequence`
+element. Surface emits the declarative wrapper: a scrollscrub scope, a host
+element whose authored CSS image is the baseline, an inert
+`script[type="application/json"]` frame catalog, and — only when an intro
+declares one — a hidden skip control. Without JavaScript, with reduced motion, or
+before the element binds, the authored CSS presentation is the component: no
+blank box, no layout shift, and the element never touches scroll position or
+layout.
+
+### ViewModel: ScrollScrub
+
+The scrub relationship a scope declares — the `paste.ui.scrollscrub` /
+`paste.ui.utilities.scrollrange` grammar carried verbatim into `data-scrub-*`
+attributes.
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `start` | string | no | `"top bottom"` | Two edge anchors — each `top`, `center`, or `bottom` — for subject edge meeting root edge at progress 0; emitted as `data-scrub-start` |
+| `end` | string | no | `"bottom top"` | The same pair at progress 1; emitted as `data-scrub-end` |
+| `windowStart` | `Option[BigDecimal]` | no | `None` | Fraction of the measured span where progress starts; supplied only with `windowEnd` |
+| `windowEnd` | `Option[BigDecimal]` | no | `None` | Fraction where progress completes; within 0 to 1 and exceeding `windowStart` |
+| `mode` | `ScrubMode` | no | `None` | `Element` or `Container` — a closed enum whose `wireName` (`element`/`container`) is emitted as `data-scrub-mode`; absent is the module's own default |
+| `root` | string | no | `None` | Root selector, emitted as `data-scrub-root`; the literal `viewport` is the Element's keyword for the page viewport (its default). A declared root must contain the subject, or the Element leaves the baseline standing |
+| `subject` | string | no | `None` | Subject selector, emitted as `data-scrub-subject`; absent is the scope itself |
+
+`ScrollScrub.EnterExit` is the default pair (`top bottom` → `bottom top`);
+`ScrollScrub.TopExit` is `top top` → `bottom top`, the sticky hero's traverse.
+A declared window emits `data-scrub-window` as two space-separated fractions.
+
+### ViewModel: ImageRepresentation
+
+One resolved representation of an image: `src` (nonblank), `width` and `height`
+(positive intrinsic dimensions). Upgrade rungs are this value — never a nested
+frame — so a rung cannot carry its own rungs.
+
+### ViewModel: ImageSequenceFrame
+
+One catalog frame: `src`, `width`, `height`, and `upgrades`, a sequence of
+`ImageRepresentation` for sharper variants. Supplied rungs may arrive unordered;
+`sortedUpgrades` is the serialized order. Construction rejects a rung whose
+width and height do not both strictly exceed the base's and every preceding
+rung's — the Element refuses a rung that grows in one dimension only — and a
+rung whose aspect ratio differs from the frame's by more than one percent — a
+resolution step is the same content, never a different crop. A `src` must be
+non-empty after JavaScript's whitespace trim and carry no control characters.
+
+### ViewModel: ImageSequenceCatalog
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `frames` | Seq[ImageSequenceFrame] | yes | - | Non-empty frame list in display order |
+
+One resource carries exactly one intrinsic size: construction rejects the
+same `src` appearing with different `width`/`height` anywhere in the
+catalog — across frames, or between a frame's base and its own upgrades —
+because the Element refuses that declaration at bind time. The same `src`
+with identical dimensions is legal reuse; distinct sources keep their own
+genuine dimensions. Sources compare by the identity the WHATWG URL parser
+gives them against any http(s) document base, without knowing that base:
+surrounding spaces are dropped, dot segments (including `%2e` spellings)
+are removed one segment at a time, so `x//../a.webp` is `x/a.webp` and
+not `a.webp`, a `..` at a path's root is dropped, and an http, https, ws,
+wss or ftp URL compares with its scheme and host lower-cased and its
+default port omitted. A relative `src`'s leading `..` climbs a base
+Surface does not know, so it stays distinct. Anything else compares as
+written — a backslash, a third slash before the host, another scheme, a
+host or path character the browser would decode or percent-encode — and
+the Element, which resolves against the real document base, still
+rejects aliases only that resolution reveals. The same identity is used
+inside a frame, whose representation sources must be distinct, and
+across an adaptive manifest's tiers.
+
+`toJson` produces the embedded catalog: `{ "frames": [ { "src", "width",
+"height", "upgrades": [ { "src", "width", "height" } ] } ] }`. The output is
+HTML-safe for a `script[type="application/json"]` block: every `<`, `>`, `&`
+and line separator a value could carry is a unicode escape, so a `src` reading
+literally `</script>` can never terminate the data block.
+
+### Adaptive manifest import
+
+`AdaptiveImageSequenceManifest` (`view_model_factories`) is the supported
+adapter for the version-1 tiered producer format — a document carrying
+`schemaVersion: 1`, a positive `count`, and a nonempty `sizes` array of
+`{ "width", "height", "frames": [ { "src" } ] }` tiers. `parseJson` validates
+and orders the tiers by intrinsic width; `toCatalog(resolveSource)` emits one
+catalog frame per declared index whose base is the narrowest tier and whose
+`upgrades` are each wider tier in ascending order:
+
+```json
+{ "schemaVersion": 1, "count": 2,
+  "sizes": [
+    { "width": 480, "height": 270,
+      "frames": [ { "src": "480/a.webp" }, { "src": "480/b.webp" } ] },
+    { "width": 960, "height": 540,
+      "frames": [ { "src": "960/a.webp" }, { "src": "960/b.webp" } ] } ] }
+```
+
+normalizes to catalog frames `{ "src": "480/a.webp", "width": 480,
+"height": 270, "upgrades": [ { "src": "960/a.webp", "width": 960,
+"height": 540 } ] }` (and likewise for `b.webp`), with `resolveSource`
+applied to every `src`. URL resolution is the caller's policy — absolute
+URIs, `data:` URIs, and protocol-relative sources pass through verbatim when
+the resolver says so; the adapter invents no base, origin, or fetch
+behaviour. Only `schemaVersion` 1 is supported; the declared `count` must
+match every tier's frame count. Parsing rejects duplicate JSON property names
+and any trailing JSON value after the manifest: an input is exactly one
+unambiguous document. Tier geometry is validated at parse with the frame's own
+ladder rules, and a frame `src` repeated across tiers is rejected there too,
+so those defects raise `InvalidManifest` rather than failing at render. Members
+other than `schemaVersion`, `count`, `sizes`, `width`, `height`, `frames` and
+`src` are ignored.
+
+### ViewModel: ImageSequenceIntro
+
+The finite introductory playback the sequence owns — a declared range on a
+declared clock, with an authored skip unless `skip` is false, never a general
+autoplay. Field names mirror the `data-sequence-intro-*` attributes.
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `durationMs` | int | yes | - | Positive intro duration — a typed `ImageSequenceIntro` is an actual intro; `None` on `ImageSequence` is the no-intro declaration. The module's zero-duration convention disables hand-authored intros and needs no model counterpart. Declared first, so positional construction reads duration, from, to |
+| `from` | int | no | `None` | Catalog index the intro starts at; nonnegative and within the catalog |
+| `to` | int | no | `None` | Catalog index the intro ends at; nonnegative and within the catalog; absent means the last index |
+| `easing` | `IntroEasing` | no | `EaseInOut` | `Linear` or `EaseInOut` — a closed enum whose `wireName` (`linear`/`ease-in-out`) is emitted |
+| `skipLabel` | string | no | `"Skip intro"` | Label on the authored skip control; non-null, and carrying a visible character when `skip` is true — a label of spaces, zero-width or format characters names nothing |
+| `bufferMs` | int | no | `None` | Nonnegative authored startup lead; emitted as `data-sequence-intro-buffer-ms` |
+| `skip` | boolean | no | `true` | Emit the skip control and `data-sequence-intro-skip`. `false` emits neither and reserves no `-skip` id; the intro still ends on scroll, a hidden document, reduced motion, failure or completion. Declared last, so positional construction is unchanged |
 
 ### ViewModel: ImageSequence
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `source` | string | yes | - | Frame source the Element expands into per-frame URLs |
-| `posterFirst` | string | yes | - | Poster for the sequence's first frame |
-| `posterFinal` | string | yes | - | Poster for the sequence's last frame, used under reduced motion |
-| `posterWidth` | int | yes | - | Intrinsic poster width, positive; reserves layout before load |
-| `posterHeight` | int | yes | - | Intrinsic poster height, positive |
-| `progressTargetId` | string | no | `None` | Plain element id whose scroll progress drives the sequence; no `#`, no whitespace. Defaults to the hero's name when nested in a Hero |
-| `range` | string | no | `"top-exit"` | `top-exit` or `enter-exit`: which part of the target's travel maps to the sequence |
-| `preload` | string | no | `"auto"` | `auto`, `all`, or `playhead`: `all` paces every frame through the loaders; `playhead` keeps background work inside a window that follows the desired frame, widened by observed transfer rate within the preload budget; `auto` prefetches nothing beyond the buffer horizon |
-| `priority` | int | no | `0` | Nonnegative load-priority offset. Bindings share one fetch queue, so this orders competing sequences on a page; a root's own desired frame still outranks its own prefetch |
-| `cssClass` | string | no | `""` | Additional CSS classes on the root |
-| `intro` | [ImageSequenceIntro](#viewmodel-imagesequenceintro) | no | `None` | Play an intro before scroll takes over |
-| `posterSources` | Seq[[ImageSequencePoster](#viewmodel-imagesequenceposter)] | no | empty | Responsive poster candidates: distinct widths, one aspect ratio, any order |
-| `posterSizes` | string | no | `"100vw"` | `sizes` attribute for the responsive poster |
-| `scrollFrom` | int | no | `None` | Frame index the scroll range starts at |
-| `scrollTo` | int | no | `None` | Frame index the scroll range ends at; supplied together with `scrollFrom` |
-| `fit` | string | no | `"cover"` | `cover` or `contain`: how each drawn frame fits its box |
-| `scrollWindowStart` | double | no | `0.0` | Fraction of the target's travel where playback starts, within 0 and 1 |
-| `scrollWindowEnd` | double | no | `1.0` | Fraction of the target's travel where playback completes, within 0 and 1 and exceeding `scrollWindowStart` |
+| `catalog` | [ImageSequenceCatalog](#viewmodel-imagesequencecatalog) | yes | - | The frame catalog, embedded as an inert JSON block |
+| `cssClass` | string | no | `""` | Additional CSS classes on the scope root |
+| `scrub` | [ScrollScrub](#viewmodel-scrollscrub) | no | `ScrollScrub.TopExit` | The scroll relationship the scope declares |
+| `from` | int | no | `None` | Catalog index at scroll progress 0; within the catalog; emitted as `data-sequence-from` |
+| `to` | int | no | `None` | Catalog index at progress 1; may be lower than `from` for reverse playback |
+| `intro` | [ImageSequenceIntro](#viewmodel-imagesequenceintro) | no | `None` | One finite intro before scroll ownership |
+| `resolution` | boolean | no | `true` | Emit `data-paste-progressiveresolution`: displayed frames may resolve sharper representations under the CSS policy |
+| `scrubBufferFrames` | int | no | `None` | Nonnegative authored scrub gate; emitted as `data-sequence-scrub-buffer-frames` |
 
-Construction rejects a blank `source`, `posterFirst` or `posterFinal`, a
-non-positive poster dimension, an unknown `range` or `preload`, a negative
-`priority` or scroll endpoint, one scroll endpoint without the other, a `fit`
-that is neither `cover` nor `contain`, a scroll window bound outside 0 to 1,
-a window whose end does not exceed its start, a
-`progressTargetId` that is blank or carries `#` or whitespace, repeated poster
-widths, and poster aspect ratios that disagree by more than one percent. These are configuration errors (`IllegalArgumentException`), including
-through `copy`.
+Construction rejects every invalid value above — blank or non-positive frame
+fields, duplicate rung widths or widths that do not exceed the base width,
+mismatched rung aspect, one source at two intrinsic sizes, an anchor pair that
+is not two edge tokens, a half-declared or out-of-range window, blank
+selectors, a catalog index outside the frames, a non-positive duration or
+negative buffer, a null `Option` container or a null enum instance, a null
+`skipLabel`, and a `skipLabel` with no visible character when `skip` is true.
+Unordered rung widths are accepted — construction sorts them ascending. These
+are configuration errors (`IllegalArgumentException`), including through
+`copy`.
 
-### ViewModel: ImageSequenceIntro
+`ScrollScrub` `root` and `subject` are caller-owned selectors: Surface
+validates only that they are nonblank and emits them verbatim; existence,
+uniqueness and full selector syntax are the DOM/browser boundary's to resolve
+or reject. A window bound must be exactly representable as a double, the
+precision the Element parses. The selectors Surface itself manufactures are
+different — an id interpolated into a generated `#id` selector the Element
+parses (an imagesequence `mediaId`, and the `name` of a hero carrying a
+sequence) must be a plain identifier matching `^[A-Za-z_][A-Za-z0-9_-]*$`,
+rejected at construction otherwise. Ids emitted only as element ids, link
+fragments, IDREFs or `:target` (a plain hero `name`, a nav `targetId` or
+`panelId`) are resolved by exact id and need only be nonempty, without
+whitespace or a leading `#` — a leading `#` there is a selector passed where an
+id is wanted. A form field `id`, paired only with its label's `for` and never
+written after a `#`, follows HTML's own rule: nonempty and without whitespace
+(see [form](../components/formfield/form.md)). Surface checks the syntax of
+every id; uniqueness on the page is the page's.
+
+### HTML Output
+
+The Twirl source is
+`src/main/twirl/paste/surface/components/imagesequence.scala.html` with
+signature `@(sequence: ImageSequence, mediaId: MediaId)`.
+`MediaId` is the validated rendered-block identity — its construction enforces
+the plain-identifier rule above, so every `#id` selector the template emits is
+syntactically sound without escaping:
+
+```html
+<div id="{mediaId}"
+     class="paste-ui-imagesequence-scope {cssClass}"
+     data-paste-scrollscrub
+     data-scrub-mode="{scrub.mode}"
+     data-scrub-root="{scrub.root}"
+     data-scrub-subject="{scrub.subject}"
+     data-scrub-start="{scrub.start}"
+     data-scrub-end="{scrub.end}"
+     data-scrub-window="{windowStart windowEnd}">
+    <!-- only with an intro whose skip is true: -->
+    <button type="button" id="{mediaId}-skip" class="paste-ui-imagesequence-skip" hidden>{intro.skipLabel}</button>
+    <i id="{mediaId}-host"
+       class="paste-ui-imagesequence"
+       data-paste-imagesequence="#{mediaId}-catalog"
+       data-paste-progressiveresolution
+       data-sequence-from="{from}"
+       data-sequence-to="{to}"
+       data-sequence-scrub-buffer-frames="{scrubBufferFrames}"
+       data-sequence-intro-trigger="ready"
+       data-sequence-intro-duration-ms="{intro.durationMs}"
+       data-sequence-intro-easing="{intro.easing}"
+       data-sequence-intro-skip="#{mediaId}-skip"
+       data-sequence-intro-from="{intro.from}"
+       data-sequence-intro-to="{intro.to}"
+       data-sequence-intro-buffer-ms="{intro.bufferMs}"
+       aria-hidden="true"></i>
+    <script id="{mediaId}-catalog" type="application/json">{catalog.toJson}</script>
+</div>
+```
+
+- `data-scrub-mode`, `data-scrub-root`, `data-scrub-subject` and
+  `data-scrub-window` appear only when the model declares them. The endpoint, buffer
+  and intro attributes appear only when their values are supplied; the skip
+  button and its `-intro-skip` attribute appear only with an `intro` whose
+  `skip` is true, and
+  `data-sequence-intro-trigger="ready"` is the fixed contract the intro emits
+  (the clock starts when the buffered set can paint).
+- The skip button is the scope's first child, ahead of the host, so it is the
+  scene's first tab stop. It has no presentation of its own: the page
+  positions `.paste-ui-imagesequence-skip` out of flow over the media (for
+  example `position: absolute` in a `position: relative` scope), or a
+  revealed skip takes flow space until the intro ends.
+- The intro plays only while the scroll progress is still 0, its authored
+  start, so an intro belongs on a range whose start is where the page opens —
+  `ScrollScrub.TopExit` on a scene in the first viewport. Under
+  `ScrollScrub.EnterExit` progress 0 means the subject has not entered the
+  viewport: a scene already in view ends the intro at once.
+- `{mediaId}`, `{mediaId}-host`, `{mediaId}-catalog` and, with an intro that
+  declares a skip, `{mediaId}-skip` are reserved ids on the page. Two sequences naming one
+  skip control are both refused by the Element and stay at their baselines.
+- Under `ScrubMode.Container` the scope measures the root's own scroll range —
+  subject and endpoint anchors do not apply, so `data-scrub-subject`,
+  `data-scrub-start` and `data-scrub-end` are omitted entirely while
+  `data-scrub-mode`, `data-scrub-root` and `data-scrub-window` still declare.
+- The host is a decorative `<i>` with `aria-hidden="true"`: the sequence is
+  presentational and the surrounding authored content carries the meaning. Its
+  baseline image is authored in CSS (`background-image`), so media conditions —
+  reduced motion included — pick the image as content before the element runs.
+- The catalog block is `application/json`, inert data — never executable
+  configuration — and its text is HTML-safe by construction (see
+  [ImageSequenceCatalog](#viewmodel-imagesequencecatalog)).
+- The renderer emits no runtime state and no frame-fetching configuration; the
+  element owns decoding, readiness and load scheduling.
+
+### Element Contract
+
+The Element `paste.ui.imagesequence` reads `[data-paste-imagesequence]` — a
+`#id` reference to one `script[type="application/json"]` catalog — and honours
+`data-sequence-scrub`, `-from`, `-to`, `data-image-property`,
+`data-paste-progressiveresolution`, `data-sequence-intro-*` and
+`data-sequence-scrub-buffer-frames`. It finds its `paste.ui.scrollscrub` scope
+through `data-sequence-scrub` or the nearest ancestor scope, and reads
+geometry and resolution policy through `paste.ui.utilities.scrollrange` and
+`paste.ui.utilities.imageresolution` — loading neither `paste.ui.scrollscrub`'s
+CSS-output entry nor `paste.ui.progressiveresolution` is required, and the
+standalone entry skips a sequence-declared host anyway.
+
+The element owns exactly the declared image property and, when one is
+declared, the skip control's visibility while an intro runs. The skip is
+optional to the Element too: a host without `data-sequence-intro-skip` plays
+its intro with scroll, a hidden document, reduced motion, failure and completion as its ends. CSS owns sizing, crop, background position,
+aspect and every presentation choice including the `--paste-resolution-max-width`
+cap; scroll stays native. A missing scope, an invalid declaration, reduced
+motion, or a failed load leaves the authored baseline standing — the baseline
+is content, not a placeholder. Catalog sources resolve once against the
+document base URL; absolute URLs keep their own origin.
+
+---
+
+## ProgressiveImage
+
+A standalone image that may resolve to a sharper representation, declared to
+the `paste.ui.progressiveresolution` element — an ordinary `<img>` whose
+authored `src`, `width`, `height` and `alt` are the working baseline, plus an
+inert `script[type="application/json"]` descriptor naming the same content at
+more pixels. Without JavaScript the authored img is the whole presentation.
+When native selection already covers the requirement — `srcset`/`sizes` or a
+wrapping `picture` — author that instead and omit the opt-in; the element
+passes over a host whose srcset already governs.
+
+### ViewModel: ProgressiveImage
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `toFrame` | int | no | `None` | Frame the intro runs to; defaults to the scroll range's start |
-| `durationMs` | int | no | `1600` | Positive intro duration |
-| `mode` | string | no | `"return"` | `return` hands back to scroll position, `hold` stays on the intro's last frame |
-| `trigger` | string | no | `"ready"` | `ready` or `visible`. **Reserved:** the Element starts when ready and does not read this yet |
-| `easing` | string | no | `"ease-in-out"` | `linear` or `ease-in-out` |
-| `skipLabel` | string | no | `"Skip intro"` | Nonblank label on the skip control. **Reserved:** the control is rendered hidden and no Element wires it yet |
+| `mediaId` | `MediaId` | yes | - | The descriptor block's element id — the `#id` the img references |
+| `base` | [ImageRepresentation](#viewmodel-imagerepresentation) | yes | - | The authored baseline: its `src`, `width` and `height` are the img's own attributes |
+| `alt` | string | yes | - | Text alternative — may be empty for decorative images, never null |
+| `upgrades` | list | no | `Seq.empty` | Sharper rungs of the same content — ascending width above the base, matching aspect |
+| `cssClass` | string | no | `""` | Additional CSS classes on the img |
 
-### ViewModel: ImageSequencePoster
-
-| Property | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `width` | int | yes | - | Candidate width, positive, used as the `srcset` descriptor |
-| `height` | int | yes | - | Candidate height, positive |
-| `first` | string | yes | - | First-frame image for this width |
-| `finalFrame` | string | yes | - | Last-frame image for this width, used under reduced motion |
-| `fallbackFirst` | string | no | `None` | Non-WebP first-frame image |
-| `fallbackFinal` | string | no | `None` | Non-WebP last-frame image |
+Construction rejects a null `mediaId`, `base`, `alt` or `upgrades` collection,
+a null rung, and every ladder rule the typed frame enforces — a rung at or
+under the base width or height fails the way it would in a catalog. Unordered
+rungs are accepted and sorted ascending.
 
 ### HTML Output
 
 ```html
-<div id="{mediaId}"
-     class="paste-candidate-imagesequence {cssClass}"
-     data-paste-candidate-imagesequence
-     data-sequence-source="{source}"
-     data-sequence-progress-id="{progressTargetId}"
-     data-sequence-range="{range}"
-     data-sequence-preload="{preload}"
-     data-sequence-priority="{priority}"
-     data-sequence-fit="{fit}"
-     data-sequence-scroll-window-start="{scrollWindowStart}"
-     data-sequence-scroll-window-end="{scrollWindowEnd}"
-     data-sequence-scroll-from="{scrollFrom}"
-     data-sequence-scroll-to="{scrollTo}"
-     data-sequence-intro-mode="{intro.mode}"
-     data-sequence-intro-duration-ms="{intro.durationMs}"
-     data-sequence-intro-trigger="{intro.trigger}"
-     data-sequence-intro-easing="{intro.easing}"
-     data-sequence-intro-to-frame="{intro.toFrame}">
-  <picture data-sequence-poster>
-    <source type="image/webp" media="(prefers-reduced-motion: reduce)" srcset="{final frames}" sizes="{posterSizes}">
-    <source type="image/webp" srcset="{first frames}" sizes="{posterSizes}">
-    <img src="{fallback or posterFirst}" width="{posterWidth}" height="{posterHeight}" alt="">
-  </picture>
-  <div class="paste-candidate-imagesequence-surface" data-sequence-media>
-    <button type="button" class="paste-candidate-imagesequence-skip" data-sequence-intro-skip hidden>{intro.skipLabel}</button>
-  </div>
-</div>
+<img src="/images/still-640.webp"
+     width="640" height="360"
+     alt="Product still"
+     data-paste-progressiveresolution
+     data-image-sources="#still-sources">
+<script id="still-sources" type="application/json">{
+  "src": "/images/still-640.webp",
+  "width": 640, "height": 360,
+  "upgrades": [{"src": "/images/still-1280.webp", "width": 1280, "height": 720}]
+}</script>
 ```
 
-- The scroll endpoint and intro attributes appear only when their values are
-  supplied; the intro block appears only with an `intro`. `-fit` and the
-  `-scroll-window-*` attributes always render and carry the effective value,
-  which is the Element's default when the caller does not set it.
-- Poster candidates are emitted in ascending width regardless of the order they
-  were supplied. Non-WebP `<source>` elements appear only when a candidate
-  supplies them.
-- With no `posterSources` the poster still serves reduced motion: a
-  `<source media="(prefers-reduced-motion: reduce)">` carrying `posterFinal`
-  precedes the fallback `<img>`, which keeps `posterFirst`. The plain poster
-  URLs are format-agnostic, so that source carries no `type`.
-- The poster `<img>` carries an empty `alt`: the sequence is presentational, and
-  the surrounding hero content carries the meaning.
-- The renderer emits no inline script, no runtime state, and no frame URLs; frame
-  expansion belongs to the Element.
-
-### Element Contract
-
-The Element reads `[data-paste-candidate-imagesequence]` and honours
-`data-sequence-source`, `-progress-id`, `-range`, `-preload`, `-priority`,
-`-fit`, `-scroll-window-start`, `-scroll-window-end`, `-scroll-from`,
-`-scroll-to`, and the four intro attributes other than `-intro-trigger`.
-`-fit` accepts `cover` or `contain` and defaults to `cover`;
-`-scroll-window-start` and `-scroll-window-end` are fractions from 0 to 1,
-defaulting to 0 and 1, and the end must exceed the start. Every attribute is
-optional: an absent attribute takes the Element's default, so a hand-authored
-`[data-paste-candidate-imagesequence]` element works with any subset of them
-present. The view model's defaults are the Element's defaults — `cover`,
-`0.0`, `1.0` — so markup a Surface renderer emits and markup written by hand
-mean the same thing. It adds `-priority` to every request it submits, so a
-page's sequences load in the order the caller declared; an absent or unusable
-value means no offset rather than an error. It owns
-media resources and canvas pixels, never page layout or document scrolling, and
-under reduced motion it leaves the final-frame poster in place.
-
-The Element is staged in a consuming application under the `paste-candidate`
-module namespace and is not published in `paste-elements` yet, which is why the
-markup carries `paste-candidate-*` classes. Promoting it renames the class and
-marker attribute to the `paste-ui-*` / `data-paste-*` convention, and the
-renderer, the Element and every consumer move together in one step.
+With no `upgrades` there is nothing to resolve: the img renders without
+`data-paste-progressiveresolution`, `data-image-sources` or the descriptor.
+The descriptor carries exactly one catalog frame's shape — base plus rungs —
+and serializes through the same HTML-safe JSON the catalog uses. The element
+reads `--paste-resolution-max-width` from the host's computed style as its
+cap; CSS owns that policy and all presentation.
 
 ---
 
@@ -293,7 +545,9 @@ case class Logo(
 
 ## SectionNav
 
-In-page navigation bar with anchor links to page sections. Integrates with `paste.ui.smoothscroll` (auto-intercepts anchor clicks, updates URL via pushState) and `paste.ui.stickynav` (makes nav fixed on scroll past trigger point).
+In-page navigation bar of ordinary fragment links to page sections; the browser navigates them natively. Optional Elements add to it: `paste.ui.smoothscroll` moves keyboard focus to the target once the navigation lands, `paste.ui.scrollspy` marks the current section's item, and `paste.ui.stickynav` adds `paste-fixed-subnav` to the root element once the page scrolls past the `.sticky-nav-target` slot, for page CSS to key a stuck presentation on (see [sectionnav](../elements/sectionnav.md)).
+
+Where a section lands is CSS, and Surface renders none. The `paste.ui.sectionnav` stylesheet's zero-specificity `:where(:target) { scroll-margin-top: var(--paste-ui-section-nav-clearance, 51px) }` clears the nav itself (51px with the mixin defaults). A page whose sticky nav sits below a fixed header sets `--paste-ui-section-nav-clearance` to the total of both, or sections land under the header; a page that clears its chrome with `scroll-padding-top` instead sets the property to `0px`, since the two add; a page without that stylesheet supplies `scroll-margin-top` (or `scroll-padding-top` on the scroller) itself.
 
 ### ViewModel: NavItem
 
@@ -318,6 +572,12 @@ In-page navigation bar with anchor links to page sections. Integrates with `past
 The two minimum-width attributes are unprefixed because that is what
 `paste.ui.stickynav` and `paste.ui.scrollspy` read; a renderer must emit these exact
 names.
+
+A `NavItem` without an `href` renders `#` + `targetId`, so construction then
+rejects a `targetId` that is empty, carries whitespace or starts with `#`; an
+item with an `href` is not checked, and a null `href` is rejected. Releases up
+to 0.8.0 accepted `NavItem("Top", "")` and rendered `href="#"`; that call now
+fails, and `NavItem("Top", "", href = Some("#"))` renders the same link.
 
 ### Example (Scala)
 
@@ -504,7 +764,7 @@ With default configuration and two slots:
 
 The JavaScript and CSS module names are both `paste.ui.marquee`. The CSS works with this plain HTML contract and does not depend on a Surface runtime. With CSS but no JavaScript, the wrapping list exposes every original item; without CSS, the native list remains readable. The renderer never hides, clones, or moves content.
 
-The Element scans `[data-paste-marquee]` on initialization. Public `init(root)` returns the same controller on repeated calls for an initialized root. The controller provides `refresh()`, `pause()`, `resume()`, and `dispose()`. Call `refresh()` after changing the supplied item collection; automatic mutation observation is not required.
+The Element binds each `[data-paste-marquee]` root when the module evaluates. There is no imperative control API: the authored toggle is the only pause control, eligibility is reevaluated through the Element's own `ResizeObserver` and `MutationObserver` when the list's item collection changes, and the binding lives as long as the page.
 
 Animation is permitted only when all of the following hold:
 
@@ -522,7 +782,7 @@ CSS custom properties set equal cell width with `--paste-marquee-item-width` (de
 
 The Element owns `data-paste-marquee-state` (`running`, `paused`, or `static`) on the root. A user pause restores the readable list rather than freezing partly clipped items. Resume restarts animation, not the previous animation position. The changing action labels do not use `aria-pressed`. Focus within an item restores a static readable state; links and forms remain usable in fallback rather than being animated. Dynamic reduced-motion preference changes are respected.
 
-`dispose()` removes the Element's observers and listeners, restores the attributes and style properties it owns, and leaves original nodes, DOM order, and unrelated attributes and style properties intact. Browser checks must exercise both plain HTML and equivalent Surface-rendered output, including native fallback, reduced motion, pause/resume, refresh, repeated initialization, and disposal.
+The Element never clones, reorders, or removes the authored items, and it leaves unrelated attributes and style properties untouched. Browser checks must exercise both plain HTML and equivalent Surface-rendered output, including native fallback, reduced motion, the authored pause/resume toggle, and item-collection changes.
 
 ---
 
@@ -532,6 +792,7 @@ The Element owns `data-paste-marquee-state` (`running`, `paused`, or `static`) o
 |-----------|-------|----------------|
 | Hero | `paste.surface.components.html.hero` | `paste/surface/components/hero.html` |
 | ImageSequence | `paste.surface.components.html.imagesequence` | `paste/surface/components/imagesequence.html` |
+| ProgressiveImage | `paste.surface.components.html.progressiveImage` | `paste/surface/components/progressive-image.html` |
 | Address | `paste.surface.components.html.address` | `paste/surface/components/address.html` |
 | Logo | `paste.surface.components.html.logo` | `paste/surface/components/logo.html` |
 | SectionNav | `paste.surface.components.html.sectionNav` | `paste/surface/components/section-nav.html` |
