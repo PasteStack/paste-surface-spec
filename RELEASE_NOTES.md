@@ -1,17 +1,27 @@
-# paste-surface-spec v0.8.0
+# paste-surface-spec v0.9.0
 
-**Date:** 2026-10-01
+**Date:** 2026-10-22
 
 ## Added
 
-- `NavItem.href` (`spec/view_models/components.md`,
-  `spec/elements/sectionnav.md`, `features/components.feature`): an
-  optional link emitted verbatim in place of the generated
-  `#` + `targetId` fragment. SectionNav remains an in-page anchor nav;
-  `href` covers navs rendered on pages that do not contain the target
-  sections, where fragment-only links resolve as dead anchors. Verbatim
-  links are outside `a[href^="#"]` interception, so smoothscroll and
-  scrollspy leave them to ordinary navigation.
+- Image sequence contract (`spec/view_models/components.md`,
+  `features/components.feature`): the frame, catalog, scroll-scrub,
+  progressive-image and manifest shapes a conforming surface emits —
+  declarative markup only, distinct representation sources per frame,
+  `Option[BigDecimal]` scrub windows, container-mode attribute omission,
+  and the sequenced-hero `data-hero-image-fixed` opt-out from legacy
+  parallax.
+
+## Changed
+
+- Element specs (`spec/elements/`): autogrow, heroscroll, sectionnav,
+  smoothscroll, stickynav and throttle restated against the hardened
+  module behaviour — last-writer style ownership, untrusted observer
+  records, terminal teardown, and stand-down to authored static
+  presentation when observation is unavailable.
+- Form field spec (`spec/components/formfield/form.md`): label–control
+  association requires a non-empty control id, matching the surface's
+  generated-id validation.
 
 # paste-surface-spec v0.8.0
 

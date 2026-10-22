@@ -73,9 +73,13 @@ On submit it:
    `post`, when a `post` is encoded as `text/plain`, when the target names a
    browsing context other than `_self`, when the resolved action is not on the
    page's origin, when the browser's `FormData` does not take the submitting
-   button (`new FormData(form, submitter)`), or when `WeakMap`,
-   `XMLHttpRequest`, `XMLHttpRequest.responseURL`, `FormData`,
-   `URLSearchParams` or `URL` is unavailable. The browser then submits
+   button (`new FormData(form, submitter)`), when the form's submit would not
+   go out as UTF-8 (the first `accept-charset` label the browser recognises,
+   read both space-separated and comma-separated, else the document's
+   encoding, with UTF-16 sent as UTF-8), or when
+   `WeakMap`, `XMLHttpRequest`, `XMLHttpRequest.responseURL`, `FormData`,
+   `URLSearchParams` or `URL` is unavailable, or `TextDecoder` is unavailable
+   where an `accept-charset` is declared. The browser then submits
    normally. Only same-origin markup is ever placed in the page.
 3. Prevents the navigation and sends the request through `paste.io`, which adds
    `X-Requested-With: XMLHttpRequest`. The request matches what the browser would
@@ -84,8 +88,9 @@ On submit it:
    resolved enctype
    (URL-encoded body, multipart body, or for `get` a query string that replaces
    any query already in the `action`).
-4. Ignores further submits of the same form while the request is in flight, and
-   marks the target `aria-busy="true"` for its duration. The request carries a
+4. Ignores a submit into a target that a pending request owns — the same
+   target, one around it or one inside it, from this form or another — and
+   marks the target `aria-busy="true"` while the request owns it. The request carries a
    deadline — `data-paste-form-timeout` in decimal milliseconds on the form,
    default 30,000: positive integers through 4294967295 are honored, the
    literal `0` opts out, and malformed, fractional, blank or overflowing
@@ -151,8 +156,8 @@ Inherits from `FormField`, plus:
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `type` | string | no | `"text"` | Input type (text, email, password, etc.) |
-| `id` | string | no | `null` | Element id; `label` links to it |
-| `label` | string | no | `null` | Label text; carries `*` when required |
+| `id` | string | no | `null` | Element id; the only way `label` is associated with the control (`for`/`id`) |
+| `label` | string | no | `null` | Label text; carries `*` when required; associated with the control only when `id` is set |
 | `description` | string | no | `null` | Help text below the input |
 | `value` | string | no | `""` | Current value |
 | `placeholder` | string | no | `null` | Placeholder text |
@@ -210,6 +215,17 @@ case class Input(
 </div>
 ```
 
+The control renders exactly once, after the label when there is one. With an
+`id`, the label carries `for="{id}"` and the control `id="{id}"`, so the label
+is the control's accessible name. Without an `id`, the label renders as a
+sibling with no `for` and the control has no `id`: the text is visible, but
+nothing associates it with the control, and the control takes no accessible
+name from it. Only an `id` gives a programmatic association, so pass one
+whenever the field has a `label`.
+
+An `id`, when given, must be nonempty and contain no whitespace; anything else
+fails construction (`IllegalArgumentException`, including through `copy`).
+
 ---
 
 ## Button
@@ -252,8 +268,8 @@ Inherits from `FormField`, plus:
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `id` | string | no | `null` | Element id; `label` links to it |
-| `label` | string | no | `null` | Label text; carries `*` when required |
+| `id` | string | no | `null` | Element id; the only way `label` is associated with the control (`for`/`id`) |
+| `label` | string | no | `null` | Label text; carries `*` when required; associated with the control only when `id` is set |
 | `description` | string | no | `null` | Help text below the textarea |
 | `value` | string | no | `""` | Current value |
 | `placeholder` | string | no | `null` | Placeholder text |
@@ -285,6 +301,10 @@ Inherits from `FormField`, plus:
   {errors.map(e => <p class="paste-ui-formfield-error">{e}</p>)}
 </div>
 ```
+
+Labels and ids follow the same rules as `Input`: only an `id` associates the
+label with the textarea, so pass one whenever the field has a `label`; an empty
+`id`, or one containing whitespace, fails construction.
 
 ---
 
