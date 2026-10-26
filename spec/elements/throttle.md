@@ -31,26 +31,21 @@ var throttled = throttle(fn, period, id, runFirst);
 |-----------|------|-------------|
 | `fn` | function | The function to rate-limit |
 | `period` | number | Window length in milliseconds |
-| `id` | any | Optional. Absent or falsy: the wrapper owns a private window. A string names a window shared by text; any other truthy value names one by identity |
+| `id` | any | Optional. Absent or falsy: share by function source plus period. Truthy ids share by property-key coercion |
 | `runFirst` | boolean | Optional. Falsy: trailing mode. Truthy: leading mode |
 
 ### Behaviour
 
-- **Trailing mode:** the first call opens a window; when it ends, `fn` runs
-  once with the context and arguments of the latest call made during it.
-- **Leading mode:** the first call runs `fn` at once and opens a window. If
-  more calls arrive during the window, `fn` runs once more when it ends, with
-  the latest call's context and arguments, inside a fresh window — so a steady
-  stream runs `fn` once per period.
-- **Windows:** wrappers made without an id never share a window, so create
-  the wrapper once and reuse it; a fresh wrapper per event is never throttled.
-  Every wrapper carrying one truthy id joins that window, and the latest
-  call's `fn` is the one its trailing call runs. The opening call fixes the
-  window's period and mode.
-- **Timers:** a window is open only while its timer is outstanding. When the
-  host refuses the timer — by throwing, or by running the callback before
-  `setTimeout` returns — the window closes again and `fn` does not run for
-  that call; the next call tries again.
+- **Default mode:** the first call opens a window and runs once at its end
+  with that first call's context and arguments. Further calls are discarded.
+- **Leading mode (`runFirst`):** the first call runs at once. There is no
+  trailing call. Reentry during the callback is still inside the same window.
+- **Identity:** wrappers without ids share the original function-source-plus-period key.
+  Truthy explicit ids share by property-key coercion: `1` and `"1"` share.
+  The opening call owns its function, period and mode.
+- **Errors:** a thrown timer registration releases the window and propagates.
+  Callback cleanup occurs even when the callback throws. Timers are assumed
+  to obey their native asynchronous contract.
 
 ### Example
 
@@ -70,8 +65,8 @@ paste.define(
 
 ### Internal Use
 
-No paste-elements module depends on it: the Elements schedule their work
-through `paste.ui.utilities.animation-frame` instead.
+No paste-elements module depends on it. Frame-based effects use the shared
+animation-frame utility; simple input effects run directly.
 
 ## Note
 

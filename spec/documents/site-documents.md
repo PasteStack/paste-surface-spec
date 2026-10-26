@@ -43,6 +43,9 @@ A surface enforces these at model construction, not at request time:
   escape. Malformed escapes and illegal raw characters are refused — a
   path that fails here renders a broken URL no matter how the document
   is escaped.
+- Reject literal or percent-encoded `.` and `..` path segments in both lists
+  before overlap validation or rendering. Normalize percent escapes once and
+  compare the same canonical paths that the documents emit.
 - No `indexablePaths` entry may overlap an `uncrawlablePaths` entry.
   The comparison is on the path a crawler sees: encodings of
   unreserved characters decode before the test (so `/%63ontact` IS

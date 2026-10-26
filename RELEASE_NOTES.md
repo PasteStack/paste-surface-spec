@@ -1,5 +1,48 @@
 # paste-surface-spec v0.9.0
 
+## Unreleased: original Apply, lazy content and Carousel contracts
+
+- Replaced Form's `backgroundSubmit` Boolean with the mutually exclusive
+  `FormSubmission.Native`, `.Apply` and `.Html` choices. `.Native` is the
+  default; `.Apply` is POST-only. HTML consumers migrate to `.Html` and load
+  `paste.ui.form.form_html`; ordinary validity remains `paste.ui.form.form_validity`.
+- Documented the original JSON Apply response/label flow, independent
+  caller-triggered lazy HTML loading, and restored Carousel behavior.
+- Added the `LazyContent` renderer contract and Carousel's original options.
+- Marquee durations serialize as plain decimal text so every accepted finite
+  positive duration matches Elements' input grammar.
+- Documented native validity markers and SectionNav's distinction between
+  native fragment navigation and the default smoothscroll/pushState composition.
+- Clarified explicit structural stylesheet composition and named external
+  library readiness through the existing core loader/JAM.
+
+## Unreleased: direct multistate port
+
+- Rebased multistate on the original source with local selection, default,
+  history and URI fixes. Restored generated missing names/ids and shared public
+  state objects while preserving existing authored attributes.
+- Removed the later mirrored-strip, automatic form-reset, snapshot-copying and
+  queued reentrant-transition contracts. The spec, Scala authoring guidance and
+  acceptance scenarios now describe the port. An explicit state fragment
+  clears omitted dimensions; ordinary anchors keep the current selection.
+
+## Unreleased: native select and multistate fidelity
+
+- Generalized the original branded select as paste.ui.select, with a native Select renderer
+  and matching markup contract. Native controls retain selection and submission.
+- Restored multistate's radio-only dimensions. Marked content panels are optional;
+  CSS may provide the complete presentation while the module maintains history.
+
+## Unreleased: restored modules and autosave ownership
+
+Restored the selected enhancements under `paste.ui.*`. Autosave owns its
+request and reply handling. The standalone `paste.ui.io-reply-fragment-envelope`
+client module and its public `apply` API are retired; remove its script/dependency
+when migrating to autosave. Surface's serializer and existing wire format remain
+accepted. Historical entries below describe the earlier release, not the current
+client module inventory.
+
+
 **Date:** 2026-10-22
 
 ## Added
@@ -124,7 +167,7 @@
 
 ## Added
 
-- Form component: view model, HTML output, and the `paste.ui.form` Element
+- Form component: view model, HTML output, and the `paste.ui.form.form_validity` Element
   contract — how the submission is resolved, which submissions are left to the
   browser, and what happens to each kind of response.
 - Rendering contract (`spec/rendering/rendering.md`): one view model rendered

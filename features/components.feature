@@ -3,6 +3,30 @@ Feature: Surface Component Rendering
   I need to render components with consistent HTML structure
   So that paste-elements JS modules can initialize correctly
 
+  Scenario: Form selects one submission owner
+    Given FormSubmission.Native, Apply or Html
+    When I render the Form component
+    Then every form should retain the paste-ui-form styling class
+    And Apply should add only paste-ui-apply and require POST
+    And Html should add only paste-ui-formhtml
+    And Native should add no submission enhancement class
+    And no mode should imply autosave
+
+  Scenario: Lazy content retains a useful baseline and caller-owned timing
+    Given LazyContent with a URL and fallback HTML
+    When I render it
+    Then the element should contain the escaped data-lazy-load URL and fallback content
+    And loading paste.ui.lazy_loader alone should make no request
+    And the owning page may request visible descendants after showing a panel
+
+  Scenario: Carousel renders declarations while Elements owns generated controls
+    Given a named Carousel with variableWidth, showCounter and animationEnabled
+    When I render it with direct paste-ui-carousel-item children
+    Then the root should declare the corresponding data-paste-carousel attributes
+    And its wrap should contain the authored items track
+    And the renderer should emit no generated arrows, indicators or pause button
+    And without JavaScript every authored slide should remain available
+
   Scenario: Hero component renders with required data attributes
     Given a Hero view model with:
       | property        | value |
@@ -456,8 +480,8 @@ Feature: Surface Component Rendering
     And original nodes and their order should remain intact
     And unrelated attributes and style properties should remain unchanged
 
-  Scenario Outline: paste.ui.form submits what the browser would have submitted
-    Given a form[data-paste-form] inside an IO reply fragment target
+  Scenario Outline: paste.ui.form.form_html submits what the browser would have submitted
+    Given a form.paste-ui-formhtml inside an IO reply fragment target
     And the submitting button carries <attribute> "<value>"
     When the form is submitted with that button
     Then the request should use <effect>
@@ -469,14 +493,14 @@ Feature: Surface Component Rendering
       | formenctype | multipart/form-data   | a multipart body                    |
       | formtarget  | _self                 | the _self browsing context          |
 
-  Scenario: paste.ui.form keeps the submitting button's entry in document order
-    Given a form[data-paste-form] inside an IO reply fragment target
+  Scenario: paste.ui.form.form_html keeps the submitting button's entry in document order
+    Given a form.paste-ui-formhtml inside an IO reply fragment target
     And a field named "op" placed after the submitting button named "op"
     When the form is submitted with that button
     Then the request body should list the button's "op" entry before the field's
 
-  Scenario Outline: paste.ui.form leaves submissions it cannot reproduce to the browser
-    Given a form[data-paste-form] inside an IO reply fragment target with <configuration>
+  Scenario Outline: paste.ui.form.form_html leaves submissions it cannot reproduce to the browser
+    Given a form.paste-ui-formhtml inside an IO reply fragment target with <configuration>
     When the form is submitted
     Then the submit event should not be prevented
     And no request should be sent
@@ -492,10 +516,10 @@ Feature: Surface Component Rendering
       | a browser whose FormData does not take the submitting button   |
       | a browser without WeakMap                                      |
 
-  Scenario: paste.ui.io-reply-fragment-envelope places markup only
+  Scenario: autosave reply markup does not initialize unrelated enhancements
     Given a document containing a target named "list"
-    When an envelope places markup containing a form[data-paste-form] into "list"
-    Then the form should not be enhanced by the envelope Element
+    When a successful autosave reply places markup containing a form.paste-ui-formhtml into "list"
+    Then the form should not be enhanced by autosave
 
   Scenario: Form renders with defaults
     Given a Form view model with:
@@ -513,17 +537,17 @@ Feature: Surface Component Rendering
     And the HTML should not contain paste-ui-form-errors
     And the content slot should appear inside the form
 
-  Scenario: Form with backgroundSubmit emits the Element attribute
+  Scenario: Form with Html submission emits the owning Element class
     Given a Form view model with:
       | property         | value     |
       | action           | /feedback |
-      | backgroundSubmit | true      |
+      | submission       | Html      |
       | id               | feedback  |
       | cssClass         | wide      |
     When I render the Form component
-    Then the HTML should contain data-paste-form
+    Then the HTML should contain class token "paste-ui-formhtml"
     And the HTML should contain id="feedback"
-    And the HTML should contain element with class="paste-ui-form wide"
+    And the HTML should contain element with class="paste-ui-form paste-ui-formhtml wide"
 
   Scenario: Form renders form-level errors above the fields
     Given a Form view model with:
@@ -621,62 +645,81 @@ Feature: Surface Component Rendering
     And the envelope data should carry variables as string values
     And the body should be application/json with Vary "X-Requested-With, Accept"
 
-  Scenario: IO reply fragment envelope failure shape
-    Given an IO reply fragment update fails with status 400
+  Scenario: Metadata-only IO reply fragment envelope failure shape
+    Given an error encoded by IoReplyFragmentEnvelope.failure with status 400
     Then the envelope meta should carry code 400, message "Bad Request", and a finite time
     And meta should carry error_type "param_error", error_code 400, and error_detail
     And the envelope data should be empty
 
-  Scenario: paste.ui.io-reply-fragment-envelope applies an envelope only on success
+  Scenario: autosave applies its reply only on success
     Given a document containing a div with data-paste-io-reply-fragment-target="feedback"
-    When paste.ui.io-reply-fragment-envelope applies an envelope whose status or meta code is not 200
-    Then the target content should be unchanged and the result should be 0
-    When paste.ui.io-reply-fragment-envelope applies an envelope with status 200 and meta code 200
+    When an autosave request returns a reply whose status or meta code is not 200
+    Then the target content should be unchanged
+    When an autosave request returns a reply with status 200 and meta code 200
     Then each matching target's content should be replaced by its markup
     And elements with data-paste-io-reply-fragment-bind should receive the supplied variables
-    And the result should be the number of target elements replaced, root included when it carries the attribute
 
-  Scenario: paste.ui.form swaps HTML responses of any status
-    Given a form[data-paste-form] inside a div with data-paste-io-reply-fragment-target="feedback"
+  Scenario: paste.ui.form.form_html swaps HTML responses of any status
+    Given a form.paste-ui-formhtml inside a div with data-paste-io-reply-fragment-target="feedback"
     When the form is submitted
     Then the request should go through paste.io with X-Requested-With
-    And the target should be aria-busy while in flight
+    And the target should carry aria-busy="true" and class token "paste-ui-formhtml-busy" while in flight
+    And unrelated target classes should remain
     When the response arrives as text/html with status 400
     Then the target content should be replaced with the response body
     And forms inside the new content should be initialized
     And focus should move to the first role="alert" or role="status"
+    And the target should no longer carry aria-busy or paste-ui-formhtml-busy
 
-  Scenario: paste.ui.form leaves forms without an IO reply fragment target alone
-    Given a form[data-paste-form] with no enclosing data-paste-io-reply-fragment-target
+  Scenario: paste.ui.form.form_html leaves forms without an IO reply fragment target alone
+    Given a form.paste-ui-formhtml with no enclosing data-paste-io-reply-fragment-target
     When the form is submitted
     Then the submit event should not be prevented
     And no request should be sent
 
-  Scenario: paste.ui.form resubmits natively after transmission only when replay is declared safe
-    Given a form[data-paste-form] inside an IO reply fragment target
-    When the background request returns a non-HTML response or fails at the network level
-    Then the request should announce exactly one paste.ui.form:failed event carrying its reason
+  Scenario: paste.ui.form.form_html resubmits natively after transmission only when replay is declared safe
+    Given a form.paste-ui-formhtml inside an IO reply fragment target
+    When the background request returns an unsupported or malformed response or fails at the network level
+    Then aria-busy and paste-ui-formhtml-busy should clear from the target before failure notification
+    And the request should announce exactly one paste.ui.formhtml:failed event carrying its reason
     And an unmarked post form should not be resubmitted — a role="alert" failure notice appears in the form instead
     But a form carrying data-paste-form-idempotent, or a get submission, should be resubmitted natively with the same submitter
     And the re-fired submit should not be intercepted
     And a listener that cancels the failure event suppresses both the resubmit and the default notice
 
-  Scenario: paste.ui.form never places a response that left the page's origin
-    Given a form[data-paste-form] inside an IO reply fragment target
+  Scenario: paste.ui.form.form_html never places a response that left the page's origin
+    Given a form.paste-ui-formhtml inside an IO reply fragment target
     When the background request is redirected to a different origin and returns text/html
     Then the response markup is never placed in the target
     And the original form and its controls remain
-    And the form should announce a paste.ui.form:failed event with reason "response"
+    And the form should announce a paste.ui.formhtml:failed event with reason "response"
     And an unmarked post form should not be resubmitted — a role="alert" failure notice appears inside it
 
-  Scenario: paste.ui.form ignores submits while a request is in flight
-    Given a form[data-paste-form] inside an IO reply fragment target with a request in flight
+  Scenario: paste.ui.form.form_html ignores submits while a request is in flight
+    Given a form.paste-ui-formhtml inside an IO reply fragment target with a request in flight
     When the form is submitted again
     Then the submit should be prevented
     And no second request should be sent
+    And the owning request's busy markers should remain without an additional reason class
 
-  Scenario Outline: paste.ui.form leaves cross-origin actions and unsupported methods alone
-    Given a form[data-paste-form] inside an IO reply fragment target with <configuration>
+  Scenario: native radios and CSS provide the multistate baseline
+    Given named radios, associated labels and panels authored as siblings
+    And page CSS styles the checked radio's adjacent label and reveals its matching following panel
+    When the visitor selects another radio with JavaScript unavailable
+    Then native radio grouping should select only that choice
+    And the label styling and panel visibility should follow the checked state
+    And no data-multistate-state attribute or click subscription should be required
+
+  Scenario: multistate enhances radio selection with history
+    Given the same working radio and CSS baseline with paste.ui.multistate loaded
+    When a radio changes
+    Then the selected state should be reflected and written with pushState
+    And the matching panels should carry data-multistate-state and the selected class
+    When the visitor goes Back or Forward to a multistate entry
+    Then the restored checked values should drive the same CSS presentation
+
+  Scenario Outline: paste.ui.form.form_html leaves cross-origin actions and unsupported methods alone
+    Given a form.paste-ui-formhtml inside an IO reply fragment target with <configuration>
     When the form is submitted
     Then the submit event should not be prevented
     And no request should be sent
@@ -686,9 +729,98 @@ Feature: Surface Component Rendering
       | an action resolving to a different origin  |
       | a method other than get or post            |
 
-  Scenario: paste.ui.form GET submit replaces the action's query
-    Given a form[data-paste-form] inside an IO reply fragment target
+  Scenario: paste.ui.form.form_html GET submit replaces the action's query
+    Given a form.paste-ui-formhtml inside an IO reply fragment target
     And the form has method "get" and an action carrying a query and a fragment
     When the form is submitted
     Then the request URL should carry the form's fields as its query
     And the action's original query and fragment should not appear in the request URL
+
+  Scenario: autosave owns applying its reply
+    Given a form declaring data-ui-autosave and data-autosave-action
+    When a successful autosave returns a Surface fragment envelope or an original module envelope
+    Then autosave should apply its declared fragments and variables without a separate renderer module
+    And autosave should acknowledge only the values sent in that request
+    And edits made while it was pending should remain unacknowledged
+
+  Scenario: native and background submission guards compose
+    Given a background form with a submit button declaring data-prevent-double-submit="true"
+    When the form starts a background request and cancels native submission
+    Then the IO reply target should carry paste-ui-formhtml-busy until request settlement
+    And no native-navigation lock should disable the submitter
+    And no second request should be transmitted while that target is owned
+
+  Scenario: text reflection and sorting preserve authored DOM
+    Given text placeholders and fixed sortable slots authored in ordinary markup
+    When a field value containing HTML is reflected
+    Then it should appear as literal text while surrounding nodes remain intact
+    When a slot is dragged onto another slot
+    Then their content nodes should swap while structural order fields remain in place
+    And live values and attached listeners should remain attached to those nodes
+
+
+  Scenario: A select keeps native selection and reflects its visible option label
+    Given a native select carrying data-paste-select
+    And its next element sibling carries data-paste-select-value and aria-hidden true
+    When paste.ui.select is loaded and another option is selected
+    Then the sibling should contain the option's visible label as text
+    And the select should retain its native name, value, focus, and form behavior
+    And a completed native reset should restore the reflected default label
+
+  Scenario: Select appearance has a working native baseline
+    Given a Surface Select with an authored label and option content
+    When JavaScript does not load
+    Then the native select should remain visible, labelled, and usable
+    And no generated id or ready marker should be required
+
+  Scenario: Multistate radio values do not require marked content panels
+    Given named radios carrying data-multistate-key and authored values
+    And sibling CSS owns their presentation without data-multistate-value panels
+    When the selected radio changes
+    Then multistate should preserve the selected value in state and history
+    And Back should restore the native radio selection
+
+  Scenario: the original multistate markup receives native grouping
+    Given radios with distinct values and one data-multistate-key but no names
+    When paste.ui.multistate initializes
+    Then the radios should receive the same GUID-suffixed native group name
+    And existing authored names and ids should remain intact
+    And missing ids should receive unique values
+
+  Scenario: a later multistate address can clear an omitted dimension
+    Given two selected dimensions and paste.ui.multistate loaded
+    When the visitor navigates to an explicit state fragment naming only one dimension
+    Then that dimension should select the requested value
+    And the omitted dimension should have no checked radio or selected panel marker
+
+  Scenario: Surface keeps the original multistate responsibility
+    Given sibling radios and panels in an ordinary Twirl template
+    Then Surface should emit no runtime selected marker or mirrored-strip adapter
+    And it should not promise automatic form-reset state or history reconciliation
+
+
+  Scenario: A named fragment target can explicitly request JSON
+    Given an IoReplyFragmentTarget named "article" with format Json
+    When I render the IoReplyFragmentTarget component
+    Then its format attribute should be "json"
+    And its name attribute should be "article"
+
+  Scenario: A fragment article link remains an ordinary anchor
+    Given an IoReplyFragmentLink with href "/articles/example" and target "article"
+    When I render the IoReplyFragmentLink component
+    Then its href should be "/articles/example"
+    And data-paste-io-reply-fragment should be "article"
+    And it should have no generated id or inline event handler
+
+  Scenario: JSON and HTML can carry the same validation outcome
+    Given a rendered fragment response with status 422 and validation markup
+    When I encode it with IoReplyFragmentEnvelope.render
+    Then meta.code should be 422
+    And data.fragments should contain the rendered validation markup
+
+  Scenario: Relative fragment resources use the destination URL
+    Given an enhanced article link to a different directory
+    When its validated reply contains relative iframe and CSS background URLs
+    Then the destination URL should be committed before the markup is inserted
+    And native resource requests should resolve against that destination
+    But if the DOM write is refused the full page should replace that same history entry

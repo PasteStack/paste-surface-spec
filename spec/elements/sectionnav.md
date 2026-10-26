@@ -9,15 +9,24 @@ optional CSS-only disclosure on narrow viewports.
     ├── sectionnav.scss     (stylesheet module paste.ui.sectionnav)
     └── _mixin.scss         (mixin paste-ui-sectionnav)
 
-No JavaScript file. Every link is an ordinary fragment link the browser
-navigates natively. Optional Elements add to it without replacing that:
-`paste.ui.smoothscroll` moves keyboard focus to the target after the
-navigation lands, `paste.ui.scrollspy` marks the current section's item, and
+No JavaScript file. Every link is an ordinary fragment link. Without
+`paste.ui.smoothscroll`, the browser navigates natively. Surface's default
+`IncludesFactory.PASTE_UI` includes smoothscroll: eligible section links then
+animate and update the fragment with `pushState`, leaving focus on the link
+and emitting no `hashchange`. Choose the JAM modules explicitly when native
+navigation/focus is required. Disclosure links remain native because
+smoothscroll excludes the disclosure nav.
+
+Other optional Elements add presentation:
+`paste.ui.scrollspy` marks the current section's item, and
 `paste.ui.stickynav` writes the class a page keys its stuck presentation on.
+
+For native navigation, author `tabindex="-1"` on a destination that should take focus.
+It does not make smoothscroll perform native focus navigation.
 
 ## Mixin parameters
 
-`@include paste-ui-sectionnav(...)`; `sectionnav.scss` includes it with the
+`@include paste-ui-sectionnav(...)` inside the caller's root selector; `sectionnav.scss` includes it under `.paste-ui-section-nav` with the
 defaults.
 
 | Parameter | Default | Description |
@@ -49,13 +58,10 @@ defaults.
 
 ## Target clearance
 
-The mixin emits a zero-specificity rule for fragment targets, and for the hero
-a hash click last scrolled to that has no id (heroscroll reaches it by
-`scrollIntoView`, not as a target, and marks it `paste-ui-hero-destination`
-until the next hash click):
+The mixin emits a zero-specificity rule for native fragment targets:
 
 ```css
-:where(:target, .paste-ui-hero-destination) {
+:where(:target) {
   scroll-margin-top: var(--paste-ui-section-nav-clearance, 51px);
 }
 ```
@@ -77,8 +83,8 @@ A target's `scroll-margin-top` adds to the scroller's `scroll-padding-top`, so a
 page that clears its chrome with `scroll-padding-top` sets the custom property
 to `0px` (or passes `$target-clearance: null`), and the clearance is not
 counted twice. `scroll-margin-top` also grows a scroll-snap area, so on a page
-that snaps, the current target and the marked hero can rest the clearance lower
-than their neighbours; a snapping page clears its chrome with
+that snaps, the current target can rest the clearance lower
+than its neighbours; a snapping page clears its chrome with
 `scroll-padding-top` and zeroes the custom property.
 
 `$target-clearance: null` leaves targets to the page; a length replaces
@@ -91,8 +97,8 @@ than their neighbours; a snapping page clears its chrome with
 - **Below `$breakpoint`**: a plain nav is `display: none`. A disclosure nav
   shows its open link; the panel is a fixed overlay below the item row that
   opens while it is the `:target`, and
-  `html:has(.paste-ui-section-nav-panel:target) { overflow: hidden }` locks
-  page scroll while it is open where `:has()` is supported.
+  a document-level `:has()` rule locks page scroll while a panel inside the
+  caller's nav root is targeted, where `:has()` is supported.
 - **At and above `$breakpoint`**: the nav is `display: block` and the panel
   is `display: contents`, so the items show as the ordinary row.
 
@@ -107,13 +113,12 @@ click-outside dismissal. Click handlers must not intercept these links.
 
 ## Stuck presentation and active item
 
-- `paste.ui.stickynav` reads `.sticky-nav-target`, not the nav: once the page
-  scrolls to that element's slot (less the height of an optional fixed header
-  `#_paste_ui_nav_wrap`) it adds `paste-fixed-subnav` to the root element.
-  What changes while stuck is the page's CSS keyed on that class. It reads
-  `data-sticky-min-width` from the target, else from `.paste-ui-section-nav`.
-  The `data-paste-sticky-nav` attribute Surface emits is a marker no Element
-  reads. See [stickynav](stickynav.md).
+- `paste.ui.stickynav` reads each `[data-paste-sticky-nav]`. Its value names
+  a CSS selector; empty uses the first `[data-paste-sticky-target]`. The nav
+  receives `paste-ui-sticky-active` when that target bottom reaches the
+  viewport top. CSS owns its position and any header offset. The nav's own
+  `data-sticky-min-width` gates eligibility. When the declared or default selector matches no target, it uses the nav's initial document position. Invalid selectors and self targets leave the nav alone. An existing hidden or boxless target remains inactive.
+  See [stickynav](stickynav.md).
 - `paste.ui.scrollspy` binds to `[data-paste-scrollspy]`, else
   `.paste-ui-section-nav`, and adds `active` to the parent of the current
   section's link; its stylesheet styles `.paste-ui-section-nav-item.active a`.
@@ -150,8 +155,17 @@ click-outside dismissal. Click handlers must not intercept these links.
 `NavItem` also accepts an optional `href`, emitted verbatim instead of
 `#` + `targetId` — for example `NavItem("About", "about", href = Some("/#about"))`
 when the nav is rendered on a page that does not contain the target sections.
-A link to another document navigates as an ordinary link: `paste.ui.smoothscroll`
-gives it no focus handling and `paste.ui.scrollspy` selects only links whose
+A link to another document navigates as an ordinary link.
+`paste.ui.scrollspy` selects only links whose
 `href` starts with `#`. Surface renders no CSS, so the target clearance above
 comes from the `paste.ui.sectionnav` stylesheet, and a page whose sticky nav
 sits under a fixed header sets `--paste-ui-section-nav-clearance`.
+
+
+## Section tracking
+
+The optional `paste.ui.scrollspy` module caches the linked sections' positions.
+Window resize and load refresh those positions. Where `ResizeObserver` is
+available, size changes in the body, nav or linked sections also invalidate
+them, so late content growth is reflected through the existing frame pass.
+Scroll events select against the cache; they do not remeasure every section.

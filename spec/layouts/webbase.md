@@ -2,6 +2,13 @@
 
 The base HTML structure for all pages.
 
+The `.paste-ui-header`, `.paste-ui-main` and `.paste-ui-footer` classes are
+Surface markup hooks. They do not activate Elements' optional structural
+`paste-layout()` recipe, which emits `.paste-page`, `.paste-header`,
+`.paste-main` and `.paste-footer`. Applications compose that recipe explicitly
+in their own layout or style the Surface hooks directly. Base imports and
+component mixins do not silently choose a page layout.
+
 ## Structure
 
 ```
@@ -33,7 +40,9 @@ webbase(pageMeta, headContent, navContent, mainContent, footerContent, scriptInc
   <meta name="description" content="{pageMeta.description}">
   <meta name="keywords" content="{pageMeta.keywords}">
   <meta name="theme-color" content="#{pageMeta.themeColor}">
-  <link rel="canonical" href="https://{pageMeta.url}">
+  <!-- Omit both URL tags when canonicalUrl is empty. -->
+  <link rel="canonical" href="{pageMeta.canonicalUrl}">
+  <meta property="og:url" content="{pageMeta.canonicalUrl}">
   
   <!-- Open Graph -->
   <meta property="og:site_name" content="{pageMeta.siteName}">
@@ -61,6 +70,9 @@ webbase(pageMeta, headContent, navContent, mainContent, footerContent, scriptInc
 </body>
 </html>
 ```
+
+Both layouts use the [PageMeta URL resolution contract](../view_models/page.md#url-resolution).
+They retain absolute http(s) URLs and resolve legacy host/path values to HTTPS.
 
 ## CSS Class Conventions
 

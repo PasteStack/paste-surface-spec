@@ -1,7 +1,7 @@
 # Autogrow Element
 
-A declared textarea grows with its content and shrinks back to its floor as
-content is deleted.
+A declared textarea grows when its content overflows. Deleting content leaves
+its current height in place.
 
 ## Module
 
@@ -19,14 +19,13 @@ paste-elements/modules/autogrow/
 **Dependencies:**
 - `paste.dom`
 - `paste.event`
-- `paste.ui.utilities.animation-frame`
 
 There are no methods. The module binds once, when it is defined.
 
 ### Activation
 
-`textarea[data-paste-autogrow]`. The attribute is the whole declaration; its
-value is not read. The `.autogrow` class alone activates nothing.
+`textarea[data-paste-autogrow]` or the original `.autogrow` class. The
+attribute value is not read. Class-only fields remain supported.
 
 ```html
 <textarea data-paste-autogrow placeholder="Type here..."></textarea>
@@ -37,22 +36,23 @@ minimum and maximum heights are CSS.
 
 ### Behaviour
 
-- Sizing follows the `input` event — typing, delete, cut, paste, undo —
-  coalesced into one animation-frame pass for every changed field.
-- The floor is the field's rendered height when the module first sees it
-  rendered: at bind, or at the first pass after a field hidden at bind is
-  shown. A field that is not rendered is skipped.
-- The browser's resize handle keeps working with or without JavaScript; a
-  height the user drags to becomes the new floor.
-- A height transition never runs on the module's own sizing writes, and a
-  collapse that clamps the page's or the nearest scrolled ancestor's offset
-  puts it back.
+Shared `input` and legacy `keyup` handlers size visible fields at bind and on input (typing,
+paste, cut, delete and undo). It only increases height. A field whose content
+fits does no computed-style read or style write. Box sizing, padding and
+borders are accounted for; resolved pixel max-height is honored.
+
+CSS owns min/max height, manual resizing and transitions. Existing inline
+height priority is preserved. There is no collapse, shrink, remembered floor,
+transition suppression, scroll restoration or animation-frame queue. Hidden
+fields wait for a visible input event. Programmatic value changes need an
+input event when they should trigger growth.
 
 ## Mixin parameters
 
-`@include paste-ui-autogrow(...)`; `autogrow.scss` includes it with the
-defaults. The rule targets `[data-paste-autogrow]` and also sets
-`overflow-y: auto`.
+`@include paste-ui-autogrow(...)` applies to the caller's textarea selector
+and sets `overflow-y: auto`. Definition imports alone emit nothing.
+`autogrow.scss` selects `.autogrow, [data-paste-autogrow]` with the defaults.
+Place custom includes inside the intended textarea selector.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
