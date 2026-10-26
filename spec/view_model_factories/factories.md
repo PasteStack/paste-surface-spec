@@ -73,7 +73,7 @@ Creates direct asset includes and JAM events, aggregating module names.
 object IncludesFactory {
   val PASTE_CORE = Seq("paste", "paste.dom", "paste.event", "paste.util")
   val PASTE_UI = Seq("paste.ui.heroscroll", "paste.ui.stickynav", "paste.ui.smoothscroll")
-  val PASTE_FORMS = Seq("paste.ui.autogrow", "paste.ui.utilities.throttle")
+  val PASTE_FORMS = Seq("paste.ui.autogrow")
 
   def forPasteJam(additionalModules: Seq[String] = Seq.empty): Jam =
     Jam(js = PASTE_CORE ++ PASTE_UI ++ additionalModules)
