@@ -44,7 +44,13 @@ attributes Surface emits are markers the module does not read.
 | `data-hero-image-fixed` | image | No parallax background position |
 | `data-hero-image-fade` | image | The image fades as the hero leaves the viewport |
 | `data-hero-min-opacity` | image | Plain decimal from 0 to 1 (`0.25`, `.25`, `1.`), read untrimmed; the fade never writes an opacity below it. Any other spelling, or a value above 1, means 0 |
-| `data-hero-hashclick` | hero | A click inside the hero (not on a link, control, `[tabindex]` or `[contenteditable]`) navigates to the next element sibling when that sibling is a hero: by fragment navigation when it has an id, else by `scrollIntoView()`. Non-touch devices only |
+
+### Navigation
+
+Use ordinary anchors, such as `<a href="#details">Details</a>`, and an `id`
+on the destination. Author `tabindex="-1"` when the destination should take
+focus. Heroscroll does not handle clicks or navigation. The former
+`data-hero-hashclick` attribute has no behavior and should be removed.
 
 ### Behaviour
 
@@ -122,9 +128,14 @@ In `paste-surface-scala`, use the `Hero` component:
 }
 ```
 
+The hero section carries its `id` and `tabindex="-1"` so native fragment
+links can focus it.
+
 `showImage` emits the `paste-ui-hero-image` element; `disableParallax` emits
 `paste-ui-hero-basicimage` instead, which the module never discovers. A hero
 carrying an `imageSequence` keeps `paste-ui-hero-image` as the sequence host
 and adds `data-hero-image-fixed`, so the parallax never writes the
 sequence's frames. There is no `parallax` or `fullHeight` parameter: height is
 the mixin's `$height` or page CSS, and `force-full-height` is authored markup.
+
+The mixin applies to the caller's hero root selector; `heroscroll.scss` selects `.paste-ui-hero`. Internal hero part classes remain the markup contract. Place custom includes inside the root selector; definition imports alone emit nothing.

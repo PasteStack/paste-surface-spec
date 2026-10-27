@@ -1,12 +1,13 @@
 # Grid Structure
 
-12-column responsive grid system.
+Configurable responsive grid system, with 12 columns by default.
 
 ## Module
 
 ```
 paste-elements/structure/grid/
-├── grid.scss
+├── grid.scss       # Emits the standard grid selector bundle
+├── _mixin.scss     # Variables and mixins only; no CSS output
 └── _variables.scss
 ```
 
@@ -48,7 +49,7 @@ $paste-container-padding-x: $paste-grid-gutter !default;
 
 | Class | Description |
 |-------|-------------|
-| `.paste-col-{n}` | Column spanning n/12 |
+| `.paste-col-{n}` | Column spanning n / configured column count (12 by default) |
 | `.paste-col-{breakpoint}-{n}` | Responsive column |
 | `.paste-col-auto` | Auto-width column |
 
@@ -81,5 +82,12 @@ $paste-grid-columns: 16;
 $paste-grid-gutter: 2rem;
 $paste-container-max-width-xl: 1200px;
 
-@import '@pastestack/elements/structure/grid/grid';
+@import 'structure/grid/grid';
 ```
+
+Resolve imports from the published Elements source root on the Sass include path.
+No npm package is implied. `structure/grid/mixin` imports definitions only;
+`grid.scss` deliberately emits the standard structure selector bundle. Component
+mixins instead apply to caller-owned selectors. `$paste-grid-columns` must be a
+positive unitless integer; a configured container breakpoint must exist in the
+breakpoint map.

@@ -1,3 +1,51 @@
+# paste-surface-spec v0.10.0
+
+**Date:** 2026-10-26
+
+## Added
+
+- `FormSubmission` contract: mutually exclusive `Native` (default),
+  `Apply` (POST-only, the original JSON response/label flow) and `Html`
+  choices; HTML consumers load `paste.ui.form.form_html` while ordinary
+  validity remains `paste.ui.form.form_validity`.
+- Shared fragment-transport contract in `spec/rendering/rendering.md`:
+  `load` accepts `url`, `method`, `body`, `contentType` and `timeout`,
+  with specified failure reasons and element-declared deadlines such as
+  `data-paste-io-reply-fragment-timeout`.
+- `LazyContent` renderer contract and independent caller-triggered lazy
+  HTML loading.
+- `spec/elements/select.md`: the generalized `paste.ui.select` with a
+  native Select renderer and matching markup contract; native controls
+  retain selection and submission.
+- `spec/elements/original-enhancements.md` and
+  `spec/elements/multistate.md`: contracts for the restored `paste.ui.*`
+  elements and the direct multistate port — local selection, default,
+  history and URI fixes, generated missing names/ids, radio-only
+  dimensions and optional marked content panels.
+- Carousel's original options contract, matching the restored Elements
+  Carousel behavior.
+
+## Changed
+
+- Multistate rebased on the original source: an explicit state fragment
+  clears omitted dimensions while ordinary anchors keep the current
+  selection; CSS may provide the complete presentation while the module
+  maintains history.
+- Marquee durations serialize as plain decimal text so every accepted
+  finite positive duration matches Elements' input grammar.
+- Documented native validity markers, SectionNav's distinction between
+  native fragment navigation and the default smoothscroll/pushState
+  composition, explicit structural stylesheet composition, and named
+  external library readiness through the existing core loader/JAM.
+
+## Removed
+
+- The mirrored-strip, automatic form-reset, snapshot-copying and queued
+  reentrant-transition multistate contracts.
+- The `paste.ui.io-reply-fragment-envelope` client contract and its
+  public `apply` API: autosave owns its request and reply handling, and
+  Surface's serializer and existing wire format remain accepted.
+
 # paste-surface-spec v0.9.0
 
 **Date:** 2026-10-22
@@ -124,7 +172,7 @@
 
 ## Added
 
-- Form component: view model, HTML output, and the `paste.ui.form` Element
+- Form component: view model, HTML output, and the `paste.ui.form.form_validity` Element
   contract — how the submission is resolved, which submissions are left to the
   browser, and what happens to each kind of response.
 - Rendering contract (`spec/rendering/rendering.md`): one view model rendered

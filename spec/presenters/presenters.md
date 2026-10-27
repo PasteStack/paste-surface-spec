@@ -17,7 +17,7 @@ Presenters are **OPTIONAL**. They orchestrate complex pages and enable JSON/HTML
 One view model renders as a full page, an IO reply fragment, or JSON, chosen
 from the request headers; see
 [Rendering a View Model](../rendering/rendering.md). The IO reply fragment is
-what `paste.ui.form` swaps into its target on a background submit, so a
+what `paste.ui.form.form_html` swaps into its target on a background submit, so a
 presenter that re-renders after a failed submit needs no separate partial
 template.
 

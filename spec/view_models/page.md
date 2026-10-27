@@ -55,8 +55,11 @@ interface PageMeta {
   <meta name="description" content="{description}">
   <meta name="keywords" content="{keywords}">
   <meta name="theme-color" content="#{themeColor}">
-  <link rel="canonical" href="https://{url}">
+  <link rel="canonical" href="{canonicalUrl}">
   
+  <!-- Omit both URL tags when canonicalUrl is empty. -->
+  <meta property="og:url" content="{canonicalUrl}">
+
   <!-- Open Graph -->
   <meta property="og:site_name" content="{siteName}">
   <meta property="og:title" content="{title}">
@@ -64,3 +67,13 @@ interface PageMeta {
   <meta property="og:type" content="{fbSiteType}">
 </head>
 ```
+
+### URL resolution
+
+The authored `url` is retained. Both layouts derive one `canonicalUrl`: empty
+stays empty; absolute http(s) URLs retain their scheme; scheme-relative
+`//host/path` and legacy `host/path` use HTTPS. Both layouts emit the same
+canonical link and `og:url`, omitting both for an empty value. The factory's
+bare-domain default remains valid. Reject malformed or non-http(s) URLs,
+credentials, and ports above 65535 at construction, including `copy`.
+International hosts use punycode. Layouts must not prepend a scheme again.

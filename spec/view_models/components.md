@@ -70,7 +70,7 @@ An ordinary hero:
 
 ```html
 <section class="paste-ui-hero paste-ui-hero-with-image sticky-nav-target"
-         id="{name}"
+         id="{name}" tabindex="-1"
          data-paste-hero="{name}"
          data-paste-parallax="true"
          data-paste-sticky-target="true">
@@ -87,7 +87,7 @@ A sequenced hero (`imageSequence = Some(...)`):
 
 ```html
 <section class="paste-ui-hero paste-ui-hero-with-image"
-         id="{name}"
+         id="{name}" tabindex="-1"
          data-paste-hero="{name}"
          data-paste-scrollscrub
          data-scrub-start="top top"
@@ -260,6 +260,7 @@ autoplay. Field names mirror the `data-sequence-intro-*` attributes.
 | `intro` | [ImageSequenceIntro](#viewmodel-imagesequenceintro) | no | `None` | One finite intro before scroll ownership |
 | `resolution` | boolean | no | `true` | Emit `data-paste-progressiveresolution`: displayed frames may resolve sharper representations under the CSS policy |
 | `scrubBufferFrames` | int | no | `None` | Nonnegative authored scrub gate; emitted as `data-sequence-scrub-buffer-frames` |
+| `playback` | SequencePlayback | no | `Direct` | `Direct` or `Queued(framesPerSecond = 30)`; queued rate is integer 1..120 |
 
 Construction rejects every invalid value above — blank or non-positive frame
 fields, duplicate rung widths or widths that do not exceed the base width,
@@ -329,6 +330,7 @@ syntactically sound without escaping:
 </div>
 ```
 
+- `Queued` emits `data-sequence-playback="queued"` and `data-sequence-playback-fps`; `Direct` omits both. See Ordered playback below for runtime semantics.
 - `data-scrub-mode`, `data-scrub-root`, `data-scrub-subject` and
   `data-scrub-window` appear only when the model declares them. The endpoint, buffer
   and intro attributes appear only when their values are supplied; the skip
@@ -341,7 +343,7 @@ syntactically sound without escaping:
   positions `.paste-ui-imagesequence-skip` out of flow over the media (for
   example `position: absolute` in a `position: relative` scope), or a
   revealed skip takes flow space until the intro ends.
-- The intro plays only while the scroll progress is still 0, its authored
+- The intro starts only while the scroll progress is still 0, its authored
   start, so an intro belongs on a range whose start is where the page opens —
   `ScrollScrub.TopExit` on a scene in the first viewport. Under
   `ScrollScrub.EnterExit` progress 0 means the subject has not entered the
@@ -379,7 +381,7 @@ standalone entry skips a sequence-declared host anyway.
 The element owns exactly the declared image property and, when one is
 declared, the skip control's visibility while an intro runs. The skip is
 optional to the Element too: a host without `data-sequence-intro-skip` plays
-its intro with scroll, a hidden document, reduced motion, failure and completion as its ends. CSS owns sizing, crop, background position,
+its intro with direct-mode scroll, a hidden document, reduced motion, failure and completion as its ends. Queued playback preserves a running intro before scroll travel. CSS owns sizing, crop, background position,
 aspect and every presentation choice including the `--paste-resolution-max-width`
 cap; scroll stays native. A missing scope, an invalid declaration, reduced
 motion, or a failed load leaves the authored baseline standing — the baseline
@@ -545,7 +547,7 @@ case class Logo(
 
 ## SectionNav
 
-In-page navigation bar of ordinary fragment links to page sections; the browser navigates them natively. Optional Elements add to it: `paste.ui.smoothscroll` moves keyboard focus to the target once the navigation lands, `paste.ui.scrollspy` marks the current section's item, and `paste.ui.stickynav` adds `paste-fixed-subnav` to the root element once the page scrolls past the `.sticky-nav-target` slot, for page CSS to key a stuck presentation on (see [sectionnav](../elements/sectionnav.md)).
+In-page navigation bar of ordinary fragment links to page sections. Without smoothscroll the browser navigates natively; `tabindex="-1"` makes a destination focusable and the hero renderer supplies it. `IncludesFactory.defaultIncludes()` includes `paste.ui.smoothscroll`, which instead animates and pushStates the fragment, leaves focus on the link and emits no hashchange. Choose an explicit JAM without smoothscroll when native navigation is required. Optional Elements add to it: `paste.ui.scrollspy` marks the current section's item, and `paste.ui.stickynav` adds `paste-ui-sticky-active` to each marked nav once its declared target bottom passes the viewport top, for page CSS to key a stuck presentation on (see [sectionnav](../elements/sectionnav.md)).
 
 Where a section lands is CSS, and Surface renders none. The `paste.ui.sectionnav` stylesheet's zero-specificity `:where(:target) { scroll-margin-top: var(--paste-ui-section-nav-clearance, 51px) }` clears the nav itself (51px with the mixin defaults). A page whose sticky nav sits below a fixed header sets `--paste-ui-section-nav-clearance` to the total of both, or sections land under the header; a page that clears its chrome with `scroll-padding-top` instead sets the property to `0px`, since the two add; a page without that stylesheet supplies `scroll-margin-top` (or `scroll-padding-top` on the scroller) itself.
 
@@ -564,10 +566,13 @@ Where a section lands is CSS, and Surface renders none. The `paste.ui.sectionnav
 |----------|------|----------|---------|-------------|
 | `items` | Seq[NavItem] | yes | - | Navigation link items |
 | `sticky` | boolean | no | `true` | Emit `data-paste-sticky-nav` attribute |
-| `stickyMinWidth` | int | no | `0` | Viewport width below which `paste.ui.stickynav` stays inactive; emitted as `data-sticky-min-width` when positive |
+| `stickyMinWidth` | int | no | `0` | Viewport width at or below which `paste.ui.stickynav` stays inactive; emitted as `data-sticky-min-width` when positive |
 | `scrollspy` | boolean | no | `false` | Emit `data-paste-scrollspy`, the root `paste.ui.scrollspy` marks active items on |
-| `scrollspyMinWidth` | int | no | `0` | Viewport width below which `paste.ui.scrollspy` stays inactive; emitted as `data-spy-min-width` when positive |
+| `scrollspyMinWidth` | int | no | `0` | Viewport width at or below which `paste.ui.scrollspy` stays inactive; emitted as `data-spy-min-width` when positive |
 | `cssClass` | string | no | `""` | Additional CSS class on the `<nav>` |
+| `disclosure` | NavDisclosure | no | `None` | Native fragment-controlled mobile panel |
+| `scrollspyTouch` | boolean | no | `false` | Emit `data-spy-touch` when scrollspy is enabled |
+| `ariaLabel` | string | no | `None` | Optional `aria-label` on the nav |
 
 The two minimum-width attributes are unprefixed because that is what
 `paste.ui.stickynav` and `paste.ui.scrollspy` read; a renderer must emit these exact
@@ -595,7 +600,10 @@ case class SectionNav(
   stickyMinWidth: Int = 0,
   scrollspy: Boolean = false,
   scrollspyMinWidth: Int = 0,
-  cssClass: String = ""
+  cssClass: String = "",
+  disclosure: Option[NavDisclosure] = None,
+  scrollspyTouch: Boolean = false,
+  ariaLabel: Option[String] = None
 )
 ```
 
@@ -609,7 +617,7 @@ case class SectionNav(
      data-spy-min-width="{scrollspyMinWidth}">
   <ul class="paste-ui-section-nav-items">
     <li class="paste-ui-section-nav-item {item.cssClass}">
-      <a href="{item.href, or # + item.targetId when href is unset}">{item.label}</a>
+      <a class="paste-ui-section-nav-link" href="{item.href, or # + item.targetId when href is unset}">{item.label}</a>
     </li>
   </ul>
 </nav>
@@ -619,83 +627,71 @@ When `sticky=false`, the `data-paste-sticky-nav` attribute is omitted, and likew
 `data-paste-scrollspy` when `scrollspy=false`. Each minimum-width attribute is omitted
 when its value is `0`.
 
+### ViewModel: NavDisclosure
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `panelId` | string | yes | - | Unique native fragment id; reserve `<panelId>-toggle` too |
+| `label` | string | no | `"Menu"` | Accessible open-link text |
+| `footer` | trusted HTML | no | `None` | Optional content after the nav items inside the panel |
+| `closeLabel` | string | no | `"Close menu"` | Accessible close-link text |
+
+`panelId` must be nonempty, contain no whitespace and not start with `#`.
+It is resolved as an exact fragment id, not a CSS selector. The caller owns
+uniqueness of both reserved ids. Disclosure adds `.paste-ui-section-nav-disclosure`;
+the `.paste-ui-section-nav-panel` carries `id=panelId` and `tabindex="-1"`.
+The open anchor has `id=<panelId>-toggle`, `href=#<panelId>`, and
+`aria-controls=<panelId>`. The close anchor points back to `#<panelId>-toggle`.
+CSS `:target` owns open state, native links own history/focus, and no JavaScript
+listener or mirrored `aria-expanded` state is needed. Without disclosure the
+list remains directly inside the nav. `ariaLabel` and `scrollspyTouch` map to
+`aria-label` and `data-spy-touch`; omit them when absent/false, and emit
+`data-spy-touch` only when `scrollspy` is enabled.
+
 ---
 
 ## Carousel
 
-Markup contract for a slide carousel: a container plus caller-supplied slides, with attributes describing navigation arrows, optional indicators, and auto-cycling.
+Discrete paging restored from the original carousel. Load `paste.ui.carousel`
+and the optional `modules/carousel/carousel` stylesheet; the mixin is
+`paste-ui-carousel`. See [the complete Element contract](../elements/carousel.md).
+Without the enhancement all authored slide content remains in normal flow.
 
-This is a renderer-only contract. No Element implements it in `paste-elements` today, so the emitted markup stays static: the classes and data attributes below are the boundary a future Element must honour, not a description of shipped behaviour. Callers needing motion today use [Marquee](#marquee), whose Element exists.
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `name` | string | required | Named instance on `paste.ui.carousel`; empty uses a GUID |
+| `autoCycleMs` | nonnegative int | `0` | Interval; zero disables cycling |
+| `showIndicators` | boolean | false | Numbered page buttons |
+| `cssClass` | string | empty | Caller classes |
+| `variableWidth` | boolean | false | Equal authored slide widths; otherwise one full-width slide per page |
+| `showCounter` | boolean | false | Current/total page counter |
+| `animationEnabled` | boolean | false | Reflect actual transitions with the animating class |
+| `broadcastMoves` | boolean | false | Original `carouselMove` event |
+| `controlsParentId` | optional HTML id | absent | Literal id of an authored arrow/pause controls container; indicators/counter remain in the carousel root |
+| `previousLabel`, `nextLabel`, `pauseLabel` | nonblank string | Previous, Next, Pause | Generated control labels |
 
-### ViewModel: Carousel
-
-| Property | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `name` | string | yes | - | Unique identifier for the carousel |
-| `autoCycleMs` | int | no | `0` | Auto-cycle interval in milliseconds (0 = disabled) |
-| `showIndicators` | boolean | no | `false` | Show dot indicators |
-| `cssClass` | string | no | `""` | Additional CSS class |
-
-### ViewModel: CarouselSlide
-
-| Property | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `content` | string | no | `""` | Slide content |
-| `cssClass` | string | no | `""` | Additional CSS class |
-
-### Example (Scala)
-
-```scala
-case class Carousel(
-  name: String,
-  autoCycleMs: Int = 0,
-  showIndicators: Boolean = false,
-  cssClass: String = ""
-)
-```
-
-### Usage
+The renderer emits `.paste-ui-carousel`, an inner `.paste-ui-carousel-wrap`
+and `.paste-ui-carousel-items`. The content slot supplies direct
+`.paste-ui-carousel-item` children. It emits the declared attributes in the
+Element contract, never generated controls or runtime state.
 
 ```scala
-@paste.surface.components.html.carousel(Carousel("hero-carousel", autoCycleMs = 5000, showIndicators = true)) {
-  <div class="paste-ui-carousel-item">Slide 1</div>
-  <div class="paste-ui-carousel-item">Slide 2</div>
-  <div class="paste-ui-carousel-item">Slide 3</div>
+@paste.surface.components.html.carousel(Carousel("gallery", showIndicators = true)) {
+  <article class="paste-ui-carousel-item">One</article>
+  <article class="paste-ui-carousel-item">Two</article>
 }
 ```
 
-### HTML Output
+`CarouselSlide(content, cssClass)` remains a data type; the template's `Html`
+content slot owns rendering, and no raw string-to-HTML conversion is implied.
 
-```html
-<div class="paste-ui-carousel"
-     data-paste-carousel-name="{name}"
-     data-paste-carousel-autocycle="{autoCycleMs}"
-     data-paste-carousel-indicate>
-  <div class="paste-ui-carousel-items">
-    <!-- slide content -->
-  </div>
-</div>
-```
+## LazyContent
 
-### JS Module
-
-None. An Element named `paste.ui.carousel` would own arrow construction, indicators, and touch handling; until one is published, nothing enhances this markup.
-
-### CSS Classes
-
-| Class | Description |
-|-------|-------------|
-| `paste-ui-carousel` | Container |
-| `paste-ui-carousel-items` | Slide track (flex container) |
-| `paste-ui-carousel-item` | Individual slide |
-| `paste-ui-carousel-control` | Nav button base |
-| `paste-ui-carousel-controls-next` | Next arrow |
-| `paste-ui-carousel-controls-prev` | Previous arrow |
-| `paste-ui-carousel-controls-inactive` | Disabled arrow state |
-| `paste-ui-carousel-indicator` | Indicator dots container |
-| `paste-ui-carousel-indicator-item` | Individual dot |
-| `paste-ui-carousel-indicator-item-active` | Active dot |
-| `paste-ui-carousel-loaded` | Added after initialization |
+`LazyContent(url, id = None, cssClass = "")` renders a `div` carrying
+`data-lazy-load`, its optional validated HTML id and caller classes. Its `Html`
+slot supplies useful initial/fallback content. URL must be nonblank. Load
+`paste.ui.lazy_loader` and have the owning page request visible content at its
+own visibility transitions. See [lazy loading](../elements/lazy-loader.md).
 
 ---
 
@@ -796,5 +792,53 @@ The Element never clones, reorders, or removes the authored items, and it leaves
 | Address | `paste.surface.components.html.address` | `paste/surface/components/address.html` |
 | Logo | `paste.surface.components.html.logo` | `paste/surface/components/logo.html` |
 | SectionNav | `paste.surface.components.html.sectionNav` | `paste/surface/components/section-nav.html` |
-| Carousel | `paste.surface.components.html.carousel` | `paste/surface/components/carousel.html` (markup only; no Element) |
+| Carousel | `paste.surface.components.html.carousel` | `paste/surface/components/carousel.html` (paste.ui.carousel) |
 | Marquee | `paste.surface.components.html.marquee` | `paste/surface/components/marquee.html` |
+
+Marquee duration serialization uses a plain decimal, including small or large
+positive finite values; a renderer must not emit exponent notation.
+
+## Ordered playback
+
+ImageSequence.playback defaults to SequencePlayback.Direct, preserving immediate
+scroll ownership. SequencePlayback.Queued(framesPerSecond = 30) emits
+data-sequence-playback="queued" and data-sequence-playback-fps (integer 1..120).
+Hand-authored queued markup may omit the rate for 30 fps. Invalid modes or rates
+are rejected; a rate requires queued mode.
+
+Queued playback retains a running intro and then advances through the scroll
+range from the displayed completed intro endpoint to the latest scroll destination.
+Without a completed intro, travel starts at the authored scroll start. Different
+intro and scroll endpoints are connected by every intervening catalog frame. It advances
+at most one catalog index per presentation pass and waits for readiness.
+Input updates the remaining destination; it does not accumulate obsolete input
+events. Playback continues after input stops, reverses from its current cursor,
+and rests when the destination is reached. A pending frame wakes on resource
+completion rather than an idle frame loop. Intro readiness remains bounded;
+an intro unable to finish retires at its declared duration plus 15 seconds.
+Starting after navigation or skipping an intro preserves the existing startup
+and history rules. Reduced motion retains the static baseline. A hidden
+document retires its intro and suspends queued travel until fresh measurement.
+
+This policy changes presentation only. Native scrolling and authored layout
+remain in charge of visibility; leaving a section does not force it to stay
+onscreen. Resource limits, resolution selection and readiness gates remain
+in force. Failed frames may prevent an ordered path completing; the last usable
+image remains. Queue completion does not imply decoded-cache eviction.
+
+
+## Fragment targets and links
+
+`IoReplyFragmentTarget(name, cssClass = "", format = Html)` renders a named
+replacement target. `IoReplyFragmentFormat` is `Html` or `Json`; output is
+`data-paste-io-reply-fragment-format="html|json"`. Hand-authored omission selects
+HTML preference. Null/unknown format and invalid target names are rejected.
+
+`IoReplyFragmentLink(href, target, cssClass = "")` renders an ordinary anchor
+whose `data-paste-io-reply-fragment` identifies the target. Href must be nonblank;
+target uses the same name validation. No ID or inline handler is generated.
+Loading `paste.ui.fragment_navigation` enables the optional request. The href
+must also render a full page for native navigation.
+
+See [rendering](../rendering/rendering.md) for headers, representations,
+placement, error statuses, history, cancellation and lifecycle.

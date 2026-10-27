@@ -68,8 +68,12 @@ Route -> Presenter -> ViewModelFactory -> ViewModel -> Template
 
 ### Components
 
+- [Original enhancements](spec/elements/original-enhancements.md) — character filtering, autosave, image upload, rich tooltips, native submit guards, select navigation, fixed-slot sorting and text reflection
+- [Multistate](spec/elements/multistate.md) — the radio/selected-panel/history port and its Surface markup
+- [Select](spec/elements/select.md) — native selection with an optional custom CSS face; generalized from the original branded select
+
 - [Hero, Address](spec/view_models/components.md)
-- [Forms](spec/components/formfield/form.md) — Form, Input, Button, Textarea, Hidden
+- [Forms](spec/components/formfield/form.md) — Form, Input, Button, Textarea, Select, Hidden
 
 ### Config
 
@@ -106,8 +110,10 @@ paste-elements (JS + SCSS)          paste-surface-* (Templates)
 modules/heroscroll/heroscroll.js →  components/hero.html
 modules/stickynav/stickynav.js   →  components/hero.html (data attrs)
 modules/autogrow/autogrow.js     →  components/formfield/textarea.html
-modules/form/form.js             →  form[data-paste-form] markup
-modules/io-reply-fragment-envelope/io-reply-fragment-envelope.js →  data-paste-io-reply-fragment-target targets
+modules/form/form_validity/form_validity.js →  native form validity
+modules/form/form_apply/form_apply.js →  form.paste-ui-apply
+modules/form/form_html/form_html.js →  form.paste-ui-formhtml
+modules/form/form_autosave/form_autosave.js →  form[data-ui-autosave], declared reply targets and bindings
 modules/*/*.scss                 →  (bundled CSS)
 ```
 
