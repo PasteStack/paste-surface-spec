@@ -1,47 +1,52 @@
+# paste-surface-spec v0.10.0
+
+**Date:** 2026-10-26
+
+## Added
+
+- `FormSubmission` contract: mutually exclusive `Native` (default),
+  `Apply` (POST-only, the original JSON response/label flow) and `Html`
+  choices; HTML consumers load `paste.ui.form.form_html` while ordinary
+  validity remains `paste.ui.form.form_validity`.
+- Shared fragment-transport contract in `spec/rendering/rendering.md`:
+  `load` accepts `url`, `method`, `body`, `contentType` and `timeout`,
+  with specified failure reasons and element-declared deadlines such as
+  `data-paste-io-reply-fragment-timeout`.
+- `LazyContent` renderer contract and independent caller-triggered lazy
+  HTML loading.
+- `spec/elements/select.md`: the generalized `paste.ui.select` with a
+  native Select renderer and matching markup contract; native controls
+  retain selection and submission.
+- `spec/elements/original-enhancements.md` and
+  `spec/elements/multistate.md`: contracts for the restored `paste.ui.*`
+  elements and the direct multistate port — local selection, default,
+  history and URI fixes, generated missing names/ids, radio-only
+  dimensions and optional marked content panels.
+- Carousel's original options contract, matching the restored Elements
+  Carousel behavior.
+
+## Changed
+
+- Multistate rebased on the original source: an explicit state fragment
+  clears omitted dimensions while ordinary anchors keep the current
+  selection; CSS may provide the complete presentation while the module
+  maintains history.
+- Marquee durations serialize as plain decimal text so every accepted
+  finite positive duration matches Elements' input grammar.
+- Documented native validity markers, SectionNav's distinction between
+  native fragment navigation and the default smoothscroll/pushState
+  composition, explicit structural stylesheet composition, and named
+  external library readiness through the existing core loader/JAM.
+
+## Removed
+
+- The mirrored-strip, automatic form-reset, snapshot-copying and queued
+  reentrant-transition multistate contracts.
+- The `paste.ui.io-reply-fragment-envelope` client contract and its
+  public `apply` API: autosave owns its request and reply handling, and
+  Surface's serializer and existing wire format remain accepted.
+
 # paste-surface-spec v0.9.0
-
-## Unreleased: original Apply, lazy content and Carousel contracts
-
-- Replaced Form's `backgroundSubmit` Boolean with the mutually exclusive
-  `FormSubmission.Native`, `.Apply` and `.Html` choices. `.Native` is the
-  default; `.Apply` is POST-only. HTML consumers migrate to `.Html` and load
-  `paste.ui.form.form_html`; ordinary validity remains `paste.ui.form.form_validity`.
-- Documented the original JSON Apply response/label flow, independent
-  caller-triggered lazy HTML loading, and restored Carousel behavior.
-- Added the `LazyContent` renderer contract and Carousel's original options.
-- Marquee durations serialize as plain decimal text so every accepted finite
-  positive duration matches Elements' input grammar.
-- Documented native validity markers and SectionNav's distinction between
-  native fragment navigation and the default smoothscroll/pushState composition.
-- Clarified explicit structural stylesheet composition and named external
-  library readiness through the existing core loader/JAM.
-
-## Unreleased: direct multistate port
-
-- Rebased multistate on the original source with local selection, default,
-  history and URI fixes. Restored generated missing names/ids and shared public
-  state objects while preserving existing authored attributes.
-- Removed the later mirrored-strip, automatic form-reset, snapshot-copying and
-  queued reentrant-transition contracts. The spec, Scala authoring guidance and
-  acceptance scenarios now describe the port. An explicit state fragment
-  clears omitted dimensions; ordinary anchors keep the current selection.
-
-## Unreleased: native select and multistate fidelity
-
-- Generalized the original branded select as paste.ui.select, with a native Select renderer
-  and matching markup contract. Native controls retain selection and submission.
-- Restored multistate's radio-only dimensions. Marked content panels are optional;
-  CSS may provide the complete presentation while the module maintains history.
-
-## Unreleased: restored modules and autosave ownership
-
-Restored the selected enhancements under `paste.ui.*`. Autosave owns its
-request and reply handling. The standalone `paste.ui.io-reply-fragment-envelope`
-client module and its public `apply` API are retired; remove its script/dependency
-when migrating to autosave. Surface's serializer and existing wire format remain
-accepted. Historical entries below describe the earlier release, not the current
-client module inventory.
-
 
 **Date:** 2026-10-22
 
