@@ -1,3 +1,13 @@
+# paste-surface-spec v0.10.1
+
+**Date:** 2026-10-28
+
+## Changed
+
+- Apache License 2.0 applied consistently: verbatim LICENSE text, NOTICE rename, Apache short header in every first-party source file, corrected license metadata.
+
+---
+
 # paste-surface-spec v0.10.0
 
 **Date:** 2026-10-26
@@ -236,7 +246,7 @@
 
 ## Licensing
 
-- Licensed under the Apache License, Version 2.0 (`LICENSE`, `NOTICE.md`).
+- Licensed under the Apache License, Version 2.0 (`LICENSE`, `NOTICE`).
 
 # paste-surface-spec v0.1.0
 
