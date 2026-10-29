@@ -13,16 +13,20 @@ No JavaScript file. Every link is an ordinary fragment link. Without
 `paste.ui.smoothscroll`, the browser navigates natively. Surface's default
 `IncludesFactory.PASTE_UI` includes smoothscroll: eligible section links then
 animate and update the fragment with `pushState`, leaving focus on the link
-and emitting no `hashchange`. Choose the JAM modules explicitly when native
-navigation/focus is required. Disclosure links remain native because
-smoothscroll excludes the disclosure nav.
+and emitting no `hashchange`. A page that declares
+`--paste-smoothscroll-motion: native` keeps native navigation, motion and
+focus; the module steps aside (see [smoothscroll](smoothscroll.md)).
+Choose the JAM modules explicitly when native navigation is required.
+Disclosure links remain native because smoothscroll excludes the disclosure
+nav.
 
 Other optional Elements add presentation:
 `paste.ui.scrollspy` marks the current section's item, and
 `paste.ui.stickynav` writes the class a page keys its stuck presentation on.
 
 For native navigation, author `tabindex="-1"` on a destination that should take focus.
-It does not make smoothscroll perform native focus navigation.
+It does not make smoothscroll's default motion move focus; native motion
+is a real navigation, so the browser handles focus as authored.
 
 ## Mixin parameters
 
@@ -86,6 +90,10 @@ counted twice. `scroll-margin-top` also grows a scroll-snap area, so on a page
 that snaps, the current target can rest the clearance lower
 than its neighbours; a snapping page clears its chrome with
 `scroll-padding-top` and zeroes the custom property.
+
+Smoothscroll's native motion performs real fragment navigation, so
+`:target` and these clearance rules apply to its links exactly as they do
+without JavaScript.
 
 `$target-clearance: null` leaves targets to the page; a length replaces
 `auto`. Smooth motion is not part of the stylesheet: a page wanting it writes
