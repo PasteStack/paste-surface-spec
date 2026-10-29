@@ -837,3 +837,16 @@ Feature: Surface Component Rendering
     Then the destination URL should be committed before the markup is inserted
     And native resource requests should resolve against that destination
     But if the DOM write is refused the full page should replace that same history entry
+
+  Scenario: A Logo anchor stays an ordinary anchor until scrolltop is declared
+    Given a Logo with href "/" and no scrollTop declaration
+    When I render the Logo component
+    Then the anchor keeps href="/" and the paste-ui-logo class
+    And it carries no data-paste-scrolltop attribute and no generated id or inline event handler
+
+  Scenario: A Logo declaring scrollTop marks its own anchor
+    Given a Logo with href "/" and scrollTop true
+    When I render the Logo component
+    Then the anchor keeps href="/" and the paste-ui-logo class
+    And the anchor itself carries data-paste-scrolltop
+    And without JavaScript the link still navigates to "/"
