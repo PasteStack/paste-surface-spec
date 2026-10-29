@@ -1,3 +1,28 @@
+# paste-surface-spec v0.11.0
+
+**Date:** 2026-10-29
+
+## Added
+
+- `spec/elements/scrolltop.md`: the `paste.ui.scrolltop` contract — a
+  declared anchor to the current page returns to the top without a
+  reload; the browser owns the empty-fragment navigation and history,
+  the module rewrites the entry's address without the `#`.
+- Logo scenarios in `features/components.feature` covering the
+  `scrollTop` declaration: the anchor stays ordinary until declared,
+  and `Logo(scrollTop = true)` carries `data-paste-scrolltop`.
+
+## Changed
+
+- `spec/elements/smoothscroll.md`: native motion selected by the
+  `--paste-smoothscroll-motion: native` root custom property — the
+  module steps aside, CSS owns motion and clearance, and the API and
+  event route through platform fragment navigation and `scrollIntoView`.
+- `spec/elements/sectionnav.md`: native-motion navigation, focus and
+  clearance behave as authored on the native path.
+
+---
+
 # paste-surface-spec v0.10.1
 
 **Date:** 2026-10-28
