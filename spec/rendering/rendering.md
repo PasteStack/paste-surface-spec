@@ -288,8 +288,10 @@ within the original enhanced document. There is no client page cache or router.
 Redirected replies fall back to native navigation, preserving redirect-supplied
 hashes and other browser redirect semantics that XHR does not expose. A
 transmitted failure falls back to normal navigation to the authored href;
-a later native navigation, including a hash-only change, cancels the pending enhancement. Busy target refusals
-are ignored until their owner settles. Stale/superseded responses never navigate.
+a later native navigation, including a hash-only change, cancels the pending
+enhancement; a popstate that keeps the document address, such as an
+enhancement settling its own fragment, does not. Busy target refusals are
+ignored until their owner settles. Stale/superseded responses never navigate.
 
 The utility leaves inserted markup's initialization to its caller. Form HTML
 submission reinitializes its own replacement forms and validity. Lazy loading

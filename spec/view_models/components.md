@@ -547,7 +547,7 @@ case class Logo(
 
 ## SectionNav
 
-In-page navigation bar of ordinary fragment links to page sections. Without smoothscroll the browser navigates natively; `tabindex="-1"` makes a destination focusable and the hero renderer supplies it. `IncludesFactory.defaultIncludes()` includes `paste.ui.smoothscroll`, which instead animates and pushStates the fragment, leaves focus on the link and emits no hashchange. Choose an explicit JAM without smoothscroll when native navigation is required. Optional Elements add to it: `paste.ui.scrollspy` marks the current section's item, and `paste.ui.stickynav` adds `paste-ui-sticky-active` to each marked nav once its declared target bottom passes the viewport top, for page CSS to key a stuck presentation on (see [sectionnav](../elements/sectionnav.md)).
+In-page navigation bar of ordinary fragment links to page sections. The browser navigates them natively; `tabindex="-1"` makes a destination focusable and the hero renderer supplies it. `smoothscroll = true` declares the nav a `paste.ui.smoothscroll` container (`data-paste-smoothscroll`): its section links then animate and push the fragment at completion, after which focus and `:target` follow as native navigation leaves them, unless the visitor moves focus during the motion. An undeclared nav's links stay native even where `IncludesFactory.defaultIncludes()` loads smoothscroll. Optional Elements add to it: `paste.ui.scrollspy` marks the current section's item, and `paste.ui.stickynav` adds `paste-ui-sticky-active` to each marked nav once its declared target bottom passes the viewport top, for page CSS to key a stuck presentation on (see [sectionnav](../elements/sectionnav.md)).
 
 Where a section lands is CSS, and Surface renders none. The `paste.ui.sectionnav` stylesheet's zero-specificity `:where(:target) { scroll-margin-top: var(--paste-ui-section-nav-clearance, 51px) }` clears the nav itself (51px with the mixin defaults). A page whose sticky nav sits below a fixed header sets `--paste-ui-section-nav-clearance` to the total of both, or sections land under the header; a page that clears its chrome with `scroll-padding-top` instead sets the property to `0px`, since the two add; a page without that stylesheet supplies `scroll-margin-top` (or `scroll-padding-top` on the scroller) itself.
 
@@ -573,6 +573,7 @@ Where a section lands is CSS, and Surface renders none. The `paste.ui.sectionnav
 | `disclosure` | NavDisclosure | no | `None` | Native fragment-controlled mobile panel |
 | `scrollspyTouch` | boolean | no | `false` | Emit `data-spy-touch` when scrollspy is enabled |
 | `ariaLabel` | string | no | `None` | Optional `aria-label` on the nav |
+| `smoothscroll` | boolean | no | `false` | Emit `data-paste-smoothscroll`, declaring the nav a `paste.ui.smoothscroll` container |
 
 The two minimum-width attributes are unprefixed because that is what
 `paste.ui.stickynav` and `paste.ui.scrollspy` read; a renderer must emit these exact
@@ -603,7 +604,8 @@ case class SectionNav(
   cssClass: String = "",
   disclosure: Option[NavDisclosure] = None,
   scrollspyTouch: Boolean = false,
-  ariaLabel: Option[String] = None
+  ariaLabel: Option[String] = None,
+  smoothscroll: Boolean = false
 )
 ```
 
@@ -614,7 +616,8 @@ case class SectionNav(
      data-paste-sticky-nav
      data-sticky-min-width="{stickyMinWidth}"
      data-paste-scrollspy
-     data-spy-min-width="{scrollspyMinWidth}">
+     data-spy-min-width="{scrollspyMinWidth}"
+     data-paste-smoothscroll>
   <ul class="paste-ui-section-nav-items">
     <li class="paste-ui-section-nav-item {item.cssClass}">
       <a class="paste-ui-section-nav-link" href="{item.href, or # + item.targetId when href is unset}">{item.label}</a>
@@ -624,7 +627,8 @@ case class SectionNav(
 ```
 
 When `sticky=false`, the `data-paste-sticky-nav` attribute is omitted, and likewise
-`data-paste-scrollspy` when `scrollspy=false`. Each minimum-width attribute is omitted
+`data-paste-scrollspy` when `scrollspy=false` and `data-paste-smoothscroll` when
+`smoothscroll=false`. Each minimum-width attribute is omitted
 when its value is `0`.
 
 ### ViewModel: NavDisclosure

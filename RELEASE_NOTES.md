@@ -1,3 +1,33 @@
+# paste-surface-spec v0.12.0
+
+**Date:** 2026-10-29
+
+## Added
+
+- `SectionNav.smoothscroll` in `spec/view_models/components.md`, with a
+  `features/components.feature` scenario: `smoothscroll = true` emits
+  `data-paste-smoothscroll`, declaring the nav a `paste.ui.smoothscroll`
+  container.
+
+## Changed
+
+- `spec/elements/smoothscroll.md`: smoothscroll moves only declared links,
+  as the original Jawbone module did; any other link, an undeclared section
+  nav's included, stays native. Declared links push at completion, aim at
+  the page's clearance, and settle through a same-address
+  `location.replace()` so focus and `:target` follow as with native
+  navigation.
+- `spec/elements/sectionnav.md`: section links are native unless the nav
+  declares `data-paste-smoothscroll`; a declared nav's disclosure toggles
+  and open-panel choices stay native.
+- `spec/rendering/rendering.md`: fragment navigation keeps a pending request
+  through a popstate that keeps the document address, such as smoothscroll
+  settling its fragment.
+- `spec/elements/scrolltop.md`: fragments are native navigation, or
+  smoothscroll's inside a declared container.
+
+---
+
 # paste-surface-spec v0.11.0
 
 **Date:** 2026-10-29

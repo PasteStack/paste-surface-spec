@@ -1,33 +1,52 @@
 # Smoothscroll
 
-Optional `paste.ui.smoothscroll` enhances ordinary same-document anchors.
-By default, plain anchor clicks use 500 ms cubic motion and immediately push the fragment
-without native fragment navigation, synthetic hashchange or focus reassignment.
-Back and Forward remain browser history operations.
+Optional `paste.ui.smoothscroll` moves declared same-document anchors, as the
+original Jawbone module did. A `data-paste-smoothscroll` container — a
+`SectionNav(smoothscroll = true)` declares it on its own `<nav>` — delegates
+its links' clicks, including links inserted later, and moves them with
+500 ms cubic motion instead of the native fragment scroll, pushing the
+fragment at completion with no synthetic hashchange. Any other link, an
+undeclared section nav's included, stays native. Back and Forward remain
+browser history operations.
 
-`init()` discovers links without duplicate bindings. `scrollTo(element,
-duration)` moves only; with the default motion, omitted duration is 500 ms
-and zero lands immediately.
-The older `scrollTo(id, verticalOffset)` accepts an id without `#`, uses the
-section-nav height when offset is omitted, and pushes history at completion.
+`init()` discovers containers without duplicate bindings.
+`scrollTo(element, duration)` moves only; with the default motion, omitted
+duration is 500 ms and zero lands immediately. The older
+`scrollTo(id, verticalOffset)` accepts an id without `#` and pushes history
+at completion. The Paste `smoothscroll` event accepts
+`{newURL, verticalOffset, updateHash}`: an omitted or undefined offset is no
+offset; omitted updateHash defaults true; false suppresses the write.
+Boolean strings retain their case-insensitive interpretation. An event with
+no payload resolves the current URL fragment.
 
-Existing `[data-paste-smoothscroll]` and `.paste-ui-section-nav` containers
-delegate clicks, including links inserted later. These legacy clicks use the
-section-nav offset and completion history. The Paste `smoothscroll` event
-accepts `{newURL, verticalOffset, updateHash}`. Offset defaults to zero;
-omitted updateHash defaults true; false suppresses the write. Boolean strings
-retain their case-insensitive interpretation.
+Without an explicit offset, movement aims at the clearance native fragment
+navigation keeps — the target's `scroll-margin-top` plus the root's
+`scroll-padding-top` (a percentage is of the viewport) — or, when it writes
+the fragment and the page declares neither, at the section nav's:
+`--paste-ui-section-nav-clearance` resolved as a length when the root sets
+it, else the first section nav's box. The push runs from the scroll
+position the movement started from, a movement it replaced included, so
+Back returns there, and a fragment the address already names is not pushed
+again.
 
-Wheel input cancels motion and any pending completion write. New movement
-replaces unfinished movement; reduced motion lands immediately. Modified
-clicks, downloads, foreign destinations, other browsing contexts and missing
-targets stay native.
+Once the fragment is written, a same-address `location.replace()` runs the
+platform's own fragment steps: focus, the sequential focus navigation
+starting point and `:target` follow as with native navigation, and the
+platform's scroll to the fragment is the landing, so a `:target`-only
+clearance holds; an explicit offset is held over it. It adds no history
+entry and no hashchange; Chromium and WebKit fire popstate, and Firefox then
+reports the entry's `history.state` as `null`. Focus the visitor moved
+during the motion stays theirs, and `:target` then does not follow.
 
-CSS smooth movement remains sufficient when these additional timing/history
-contracts are not needed. Use native anchors when native target focus is
-required; the default motion does not promise that side effect.
+Wheel input stops motion where it is and cancels any pending completion
+write; a native navigation, or one that moves the document, supersedes it.
+New movement replaces unfinished movement; reduced motion lands
+immediately. Modified clicks, downloads, foreign destinations, other
+browsing contexts, missing targets, a declared disclosure nav's toggles and
+a section chosen from its open panel stay native.
 
-A legacy `smoothscroll` event with no payload resolves the current URL fragment and pushes at completion.
+CSS smooth movement remains sufficient when these additional timing and
+history contracts are not needed.
 
 ## Native motion
 

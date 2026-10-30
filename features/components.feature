@@ -309,6 +309,18 @@ Feature: Surface Component Rendering
     When I render the SectionNav component
     Then the HTML should contain element with class="paste-ui-section-nav"
     And the HTML should not contain data-paste-sticky-nav
+    And the HTML should not contain data-paste-smoothscroll
+
+  Scenario: SectionNav declares smoothscroll only when asked
+    Given a SectionNav view model with:
+      | property     | value |
+      | smoothscroll | true  |
+    And nav items:
+      | label | targetId |
+      | About | about    |
+    When I render the SectionNav component
+    Then the HTML should contain element with class="paste-ui-section-nav"
+    And the HTML should contain data-paste-smoothscroll
 
   Scenario: SectionNav with custom CSS classes
     Given a SectionNav view model with:
