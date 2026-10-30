@@ -9,24 +9,23 @@ optional CSS-only disclosure on narrow viewports.
     ├── sectionnav.scss     (stylesheet module paste.ui.sectionnav)
     └── _mixin.scss         (mixin paste-ui-sectionnav)
 
-No JavaScript file. Every link is an ordinary fragment link. Without
-`paste.ui.smoothscroll`, the browser navigates natively. Surface's default
-`IncludesFactory.PASTE_UI` includes smoothscroll: eligible section links then
-animate and update the fragment with `pushState`, leaving focus on the link
-and emitting no `hashchange`. A page that declares
-`--paste-smoothscroll-motion: native` keeps native navigation, motion and
-focus; the module steps aside (see [smoothscroll](smoothscroll.md)).
-Choose the JAM modules explicitly when native navigation is required.
-Disclosure links remain native because smoothscroll excludes the disclosure
-nav.
+No JavaScript file. Every link is an ordinary fragment link the browser
+navigates natively. A nav that declares `data-paste-smoothscroll`
+(`SectionNav(smoothscroll = true)`) hands its section links to
+`paste.ui.smoothscroll` while the URL does not target the disclosure panel:
+they animate and push the fragment at completion (not again when the address
+already names it), after which focus and `:target` follow as native
+navigation leaves them, unless the visitor moves focus during the motion.
+The disclosure toggles, and a section chosen from the open panel, stay
+native, so the browser closes the panel. A page that declares
+`--paste-smoothscroll-motion: native` keeps native navigation throughout
+(see [smoothscroll](smoothscroll.md)).
 
 Other optional Elements add presentation:
 `paste.ui.scrollspy` marks the current section's item, and
 `paste.ui.stickynav` writes the class a page keys its stuck presentation on.
 
-For native navigation, author `tabindex="-1"` on a destination that should take focus.
-It does not make smoothscroll's default motion move focus; native motion
-is a real navigation, so the browser handles focus as authored.
+Author `tabindex="-1"` on a destination that should take focus.
 
 ## Mixin parameters
 
@@ -91,9 +90,10 @@ that snaps, the current target can rest the clearance lower
 than its neighbours; a snapping page clears its chrome with
 `scroll-padding-top` and zeroes the custom property.
 
-Smoothscroll's native motion performs real fragment navigation, so
-`:target` and these clearance rules apply to its links exactly as they do
-without JavaScript.
+Smoothscroll's native motion performs real fragment navigation, and its own
+motion settles a declared nav's navigation through the platform's fragment
+steps, so `:target` and these clearance rules apply to its links as they do
+without JavaScript, unless the visitor moves focus during the motion.
 
 `$target-clearance: null` leaves targets to the page; a length replaces
 `auto`. Smooth motion is not part of the stylesheet: a page wanting it writes
