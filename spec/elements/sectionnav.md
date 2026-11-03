@@ -130,7 +130,14 @@ click-outside dismissal. Click handlers must not intercept these links.
 - `paste.ui.scrollspy` binds to `[data-paste-scrollspy]`, else
   `.paste-ui-section-nav`, and adds `active` to the parent of the current
   section's link; its stylesheet styles `.paste-ui-section-nav-item.active a`.
-  It reads `data-spy-min-width` and `data-spy-touch` on the nav.
+  It reads `data-spy-min-width` and `data-spy-touch` on the nav, and
+  `data-spy-history` opts the address bar into following the settled
+  selection: once scrolling stops, the current entry's fragment is
+  replaced — never pushed — with the active section's, or removed above
+  the first section. Only a fragment the nav can have written — empty,
+  or one of its links' — is ever rewritten, preserving `history.state`;
+  a deep link, the disclosure panel's or any other writer's fragment
+  stays. It is inert without `history.replaceState`.
 
 ## Example HTML
 

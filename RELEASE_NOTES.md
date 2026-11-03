@@ -1,3 +1,16 @@
+# Unreleased
+
+## Added
+
+- `SectionNav.scrollspyHistory` in `spec/view_models/components.md`: emits
+  `data-spy-history` only when `scrollspy` is also true — the current
+  history entry's fragment follows the settled scrollspy selection.
+  `spec/elements/sectionnav.md` documents the element-side contract.
+  `features/components.feature` gains scenarios for emitting with
+  scrollspy and suppressing without it.
+
+---
+
 # paste-surface-spec v0.12.0
 
 **Date:** 2026-10-29
