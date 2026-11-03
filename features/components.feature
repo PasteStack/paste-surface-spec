@@ -322,6 +322,30 @@ Feature: Surface Component Rendering
     Then the HTML should contain element with class="paste-ui-section-nav"
     And the HTML should contain data-paste-smoothscroll
 
+  Scenario: SectionNav declares scrollspy history only with scrollspy
+    Given a SectionNav view model with:
+      | property         | value |
+      | scrollspy        | true  |
+      | scrollspyHistory | true  |
+    And nav items:
+      | label | targetId |
+      | About | about    |
+    When I render the SectionNav component
+    Then the HTML should contain data-paste-scrollspy
+    And the HTML should contain data-spy-history
+
+  Scenario: SectionNav scrollspy history without scrollspy emits nothing
+    Given a SectionNav view model with:
+      | property         | value |
+      | scrollspy        | false |
+      | scrollspyHistory | true  |
+    And nav items:
+      | label | targetId |
+      | About | about    |
+    When I render the SectionNav component
+    Then the HTML should not contain data-paste-scrollspy
+    And the HTML should not contain data-spy-history
+
   Scenario: SectionNav with custom CSS classes
     Given a SectionNav view model with:
       | property | value        |

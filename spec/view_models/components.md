@@ -572,6 +572,7 @@ Where a section lands is CSS, and Surface renders none. The `paste.ui.sectionnav
 | `cssClass` | string | no | `""` | Additional CSS class on the `<nav>` |
 | `disclosure` | NavDisclosure | no | `None` | Native fragment-controlled mobile panel |
 | `scrollspyTouch` | boolean | no | `false` | Emit `data-spy-touch` when scrollspy is enabled |
+| `scrollspyHistory` | boolean | no | `false` | Emit `data-spy-history` when scrollspy is enabled — the current entry's fragment follows the settled selection |
 | `ariaLabel` | string | no | `None` | Optional `aria-label` on the nav |
 | `smoothscroll` | boolean | no | `false` | Emit `data-paste-smoothscroll`, declaring the nav a `paste.ui.smoothscroll` container |
 
@@ -605,7 +606,8 @@ case class SectionNav(
   disclosure: Option[NavDisclosure] = None,
   scrollspyTouch: Boolean = false,
   ariaLabel: Option[String] = None,
-  smoothscroll: Boolean = false
+  smoothscroll: Boolean = false,
+  scrollspyHistory: Boolean = false
 )
 ```
 
@@ -650,7 +652,9 @@ CSS `:target` owns open state, native links own history/focus, and no JavaScript
 listener or mirrored `aria-expanded` state is needed. Without disclosure the
 list remains directly inside the nav. `ariaLabel` and `scrollspyTouch` map to
 `aria-label` and `data-spy-touch`; omit them when absent/false, and emit
-`data-spy-touch` only when `scrollspy` is enabled.
+`data-spy-touch` only when `scrollspy` is enabled. `scrollspyHistory` maps
+to `data-spy-history` under the same rule: emitted only when `scrollspy`
+is enabled.
 
 ---
 
